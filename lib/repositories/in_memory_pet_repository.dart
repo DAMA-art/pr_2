@@ -112,7 +112,6 @@ class InMemoryPetRepository implements PetRepository {
   Future<int> deleteMany(List<int> ids) async {
     var count = 0;
     for (final id in ids) {
-      // Исправлена ошибка из задания: было !b[i].isDeleted
       final i = _pets.indexWhere((b) => b.id == id && !b.isDeleted);
       if (i != -1) {
         _pets[i] = _pets[i].copyWith(deletedAt: DateTime.now());

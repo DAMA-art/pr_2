@@ -43,7 +43,7 @@ class PetQuery {
       ageTo: ageTo == _unset ? this.ageTo : ageTo as int?,
       sortField: sortField ?? this.sortField,
       sortAscending: sortAscending ?? this.sortAscending,
-      page: page ?? 1, // при смене фильтров — на первую страницу
+      page: page ?? 1,
       size: size ?? this.size,
       includeDeleted: includeDeleted ?? this.includeDeleted,
     );

@@ -1,7 +1,7 @@
 class Pet {
   final int id;
   final String name;
-  final String species; // dog, cat, rabbit, bird
+  final String species;
   final String breed;
   final int ageMonths;
   final double weightKg;
