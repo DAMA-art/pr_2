@@ -32,6 +32,7 @@ class OwnerListNotifier extends ChangeNotifier {
     try {
       _result = await _repository.find(_query);
       _status = LoadStatus.success;
+      throw Exception('Сервер недоступен');
     } catch (e) {
       _error = 'Не удалось загрузить список: $e';
       _status = LoadStatus.error;
