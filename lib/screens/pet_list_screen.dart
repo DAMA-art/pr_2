@@ -4,7 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../models/pet.dart';
 import '../models/pet_query.dart';
+import '../models/clinic.dart';
+import '../repositories/clinic_repository.dart';
+import '../repositories/pet_passport_repository.dart';
+import '../state/load_status.dart';
 import '../state/pet_list_notifier.dart';
+import '../utils/species.dart';
+import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/search_field.dart';
@@ -24,10 +30,8 @@ class PetListScreen extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Center(
-                  child: Text(
-                    'Выбрано: ${notifier.selected.length}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: Text('Выбрано: ${notifier.selected.length}',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               );
             },
@@ -40,6 +44,16 @@ class PetListScreen extends StatelessWidget {
                 tooltip: 'Удалить выбранные',
                 onPressed: () => _confirmBulkDelete(context, notifier),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Создать',
+            onPressed: () async {
+              final ok = await context.push('/pets/new');
+              if (ok == true && context.mounted) {
+                context.read<PetListNotifier>().load();
+              }
             },
           ),
         ],
@@ -86,10 +100,7 @@ class PetListScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Text(notifier.error ?? 'Ошибка', textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => notifier.load(),
-                child: const Text('Повторить'),
-              ),
+              FilledButton(onPressed: () => notifier.load(), child: const Text('Повторить')),
             ],
           ),
         );
@@ -102,8 +113,6 @@ class PetListScreen extends StatelessWidget {
                 Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text('Ничего не найдено', style: TextStyle(fontSize: 18)),
-                SizedBox(height: 8),
-                Text('Попробуйте изменить условия поиска или фильтры'),
               ],
             ),
           );
@@ -124,9 +133,7 @@ class PetListScreen extends StatelessWidget {
               onSort: (field) {
                 final next = notifier.query.copyWith(
                   sortField: field,
-                  sortAscending: field == notifier.query.sortField
-                      ? !notifier.query.sortAscending
-                      : true,
+                  sortAscending: field == notifier.query.sortField ? !notifier.query.sortAscending : true,
                 );
                 notifier.applyQuery(next);
                 _syncUrl(context, next);
@@ -137,49 +144,29 @@ class PetListScreen extends StatelessWidget {
                   sortField: 'name',
                   build: (p) => Text(
                     p.name,
-                    style: TextStyle(
-                      decoration: p.isDeleted ? TextDecoration.lineThrough : null,
-                    ),
+                    style: TextStyle(decoration: p.isDeleted ? TextDecoration.lineThrough : null),
                   ),
                 ),
-                TableColumnSpec(
-                  label: 'Вид',
-                  sortField: 'species',
-                  build: (p) => Text(_speciesLabel(p.species)),
-                ),
-                TableColumnSpec(
-                  label: 'Порода',
-                  build: (p) => Text(p.breed),
-                ),
+                TableColumnSpec(label: 'Чип', sortField: 'chipNumber', build: (p) => Text(p.chipNumber)),
+                TableColumnSpec(label: 'Вид', sortField: 'species', build: (p) => Text(speciesLabel(p.species))),
+                TableColumnSpec(label: 'Порода', build: (p) => Text(p.breed)),
                 TableColumnSpec(
                   label: 'Возраст (мес.)',
                   sortField: 'ageMonths',
                   numeric: true,
                   build: (p) => Text('${p.ageMonths}'),
                 ),
-                TableColumnSpec(
-                  label: 'Вес (кг)',
-                  sortField: 'weightKg',
-                  numeric: true,
-                  build: (p) => Text(p.weightKg.toStringAsFixed(1)),
-                ),
               ],
               actions: (p) => [
                 if (p.isDeleted)
                   IconButton(
                     icon: const Icon(Icons.restore, color: Colors.green),
-                    tooltip: 'Восстановить',
                     onPressed: () => notifier.restore(p.id),
                   )
                 else ...[
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    tooltip: 'Карточка',
-                    onPressed: () => context.go('/pets/${p.id}'),
-                  ),
+                  IconButton(icon: const Icon(Icons.edit), onPressed: () => context.go('/pets/${p.id}')),
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Удалить',
                     onPressed: () => _confirmDelete(context, notifier, p),
                   ),
                 ],
@@ -195,6 +182,7 @@ class PetListScreen extends StatelessWidget {
     if (q.search.isNotEmpty) params['search'] = q.search;
     if (q.species != null) params['species'] = q.species!;
     if (q.ownerId != null) params['ownerId'] = '${q.ownerId}';
+    if (q.clinicId != null) params['clinicId'] = '${q.clinicId}';
     if (q.ageFrom != null) params['ageFrom'] = '${q.ageFrom}';
     if (q.ageTo != null) params['ageTo'] = '${q.ageTo}';
     if (q.sortField != 'name' || !q.sortAscending) {
@@ -203,46 +191,30 @@ class PetListScreen extends StatelessWidget {
     if (q.page != 1) params['page'] = '${q.page}';
     if (q.size != 10) params['size'] = '${q.size}';
     if (q.includeDeleted) params['includeDeleted'] = 'true';
-
     final uri = Uri(path: '/pets', queryParameters: params.isEmpty ? null : params);
     context.go(uri.toString());
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    PetListNotifier notifier,
-    Pet pet,
-  ) async {
-    final hard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удаление питомца'),
-        content: Text('Удалить «${pet.name}»?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Логически'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Физически'),
-          ),
-        ],
-      ),
+  Future<void> _confirmDelete(BuildContext context, PetListNotifier notifier, Pet pet) async {
+    final hard = await confirmDeleteMode(
+      context,
+      title: 'Удаление питомца',
+      body: 'Удалить «${pet.name}»?',
     );
     if (hard == null) return;
+    if (!context.mounted) return;
+    final passportRepo = context.read<PetPassportRepository>();
+    final passport = await passportRepo.findByPetId(pet.id);
     if (hard) {
+      if (passport != null) await passportRepo.hardDelete(passport.id);
       await notifier.hardDelete(pet.id);
     } else {
+      if (passport != null) await passportRepo.softDelete(passport.id);
       await notifier.softDelete(pet.id);
     }
   }
 
-  Future<void> _confirmBulkDelete(
-    BuildContext context,
-    PetListNotifier notifier,
-  ) async {
+  Future<void> _confirmBulkDelete(BuildContext context, PetListNotifier notifier) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -250,40 +222,40 @@ class PetListScreen extends StatelessWidget {
         content: Text('Удалить логически ${notifier.selected.length} записей?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
-          ),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить')),
         ],
       ),
     );
-    if (confirmed == true) {
-      await notifier.deleteSelected();
-    }
-  }
-
-  static String _speciesLabel(String s) {
-    return switch (s) {
-      'dog' => 'Собака',
-      'cat' => 'Кошка',
-      'rabbit' => 'Кролик',
-      'bird' => 'Птица',
-      _ => s,
-    };
+    if (confirmed == true) await notifier.deleteSelected();
   }
 }
 
-class _FiltersPanel extends StatelessWidget {
+class _FiltersPanel extends StatefulWidget {
   final PetListNotifier notifier;
-
   const _FiltersPanel({required this.notifier});
 
-  void _apply(BuildContext context, PetQuery next) {
-    notifier.applyQuery(next);
+  @override
+  State<_FiltersPanel> createState() => _FiltersPanelState();
+}
+
+class _FiltersPanelState extends State<_FiltersPanel> {
+  List<Clinic> _clinics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ClinicRepository>().findAllActive().then((v) {
+      if (mounted) setState(() => _clinics = v);
+    });
+  }
+
+  void _apply(PetQuery next) {
+    widget.notifier.applyQuery(next);
     final params = <String, String>{};
     if (next.search.isNotEmpty) params['search'] = next.search;
     if (next.species != null) params['species'] = next.species!;
     if (next.ownerId != null) params['ownerId'] = '${next.ownerId}';
+    if (next.clinicId != null) params['clinicId'] = '${next.clinicId}';
     if (next.ageFrom != null) params['ageFrom'] = '${next.ageFrom}';
     if (next.ageTo != null) params['ageTo'] = '${next.ageTo}';
     if (next.sortField != 'name' || !next.sortAscending) {
@@ -292,13 +264,12 @@ class _FiltersPanel extends StatelessWidget {
     if (next.page != 1) params['page'] = '${next.page}';
     if (next.size != 10) params['size'] = '${next.size}';
     if (next.includeDeleted) params['includeDeleted'] = 'true';
-    final uri = Uri(path: '/pets', queryParameters: params.isEmpty ? null : params);
-    context.go(uri.toString());
+    context.go(Uri(path: '/pets', queryParameters: params.isEmpty ? null : params).toString());
   }
 
   @override
   Widget build(BuildContext context) {
-    final q = notifier.query;
+    final q = widget.notifier.query;
     return Card(
       margin: const EdgeInsets.all(8),
       child: Padding(
@@ -308,8 +279,8 @@ class _FiltersPanel extends StatelessWidget {
           children: [
             SearchField(
               initialValue: q.search,
-              hintText: 'Поиск по имени или породе...',
-              onChanged: (v) => _apply(context, q.copyWith(search: v)),
+              hintText: 'Поиск по кличке, породе или чипу...',
+              onChanged: (v) => _apply(q.copyWith(search: v, page: 1)),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -319,58 +290,46 @@ class _FiltersPanel extends StatelessWidget {
                 SizedBox(
                   width: 160,
                   child: DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: q.species,
                     decoration: const InputDecoration(
                       labelText: 'Вид',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('Все')),
-                      DropdownMenuItem(value: 'dog', child: Text('Собака')),
-                      DropdownMenuItem(value: 'cat', child: Text('Кошка')),
-                      DropdownMenuItem(value: 'rabbit', child: Text('Кролик')),
-                      DropdownMenuItem(value: 'bird', child: Text('Птица')),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Все')),
+                      for (final item in speciesItems)
+                        DropdownMenuItem(value: item.$1, child: Text(item.$2)),
                     ],
-                    onChanged: (v) => _apply(context, q.copyWith(species: v)),
+                    onChanged: (v) => _apply(q.copyWith(species: v, page: 1)),
                   ),
                 ),
                 SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    initialValue: q.ageFrom?.toString() ?? '',
+                  width: 240,
+                  child: DropdownButtonFormField<int?>(
+                    isExpanded: true,
+                    initialValue: q.clinicId,
                     decoration: const InputDecoration(
-                      labelText: 'Возраст от',
+                      labelText: 'Филиал',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) {
-                      final n = int.tryParse(v);
-                      _apply(context, q.copyWith(ageFrom: n));
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    initialValue: q.ageTo?.toString() ?? '',
-                    decoration: const InputDecoration(
-                      labelText: 'Возраст до',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) {
-                      final n = int.tryParse(v);
-                      _apply(context, q.copyWith(ageTo: n));
-                    },
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Все')),
+                      for (final c in _clinics)
+                        DropdownMenuItem(
+                          value: c.id,
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),
+                        ),
+                    ],
+                    onChanged: (v) => _apply(q.copyWith(clinicId: v, page: 1)),
                   ),
                 ),
                 FilterChip(
                   label: const Text('Показать удалённые'),
                   selected: q.includeDeleted,
-                  onSelected: (v) => _apply(context, q.copyWith(includeDeleted: v)),
+                  onSelected: (v) => _apply(q.copyWith(includeDeleted: v, page: 1)),
                 ),
               ],
             ),
@@ -383,7 +342,6 @@ class _FiltersPanel extends StatelessWidget {
 
 class _PetCardsList extends StatelessWidget {
   final PetListNotifier notifier;
-
   const _PetCardsList({required this.notifier});
 
   @override
@@ -407,10 +365,7 @@ class _PetCardsList extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            subtitle: Text(
-              '${PetListScreen._speciesLabel(p.species)} · ${p.breed}\n'
-              'Возраст: ${p.ageMonths} мес. · Вес: ${p.weightKg} кг',
-            ),
+            subtitle: Text('${speciesLabel(p.species)} · ${p.breed}\nЧип: ${p.chipNumber}'),
             isThreeLine: true,
             trailing: p.isDeleted
                 ? IconButton(
@@ -418,10 +373,10 @@ class _PetCardsList extends StatelessWidget {
                     onPressed: () => notifier.restore(p.id),
                   )
                 : PopupMenuButton(
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(value: 'view', child: Text('Карточка')),
-                      const PopupMenuItem(value: 'soft', child: Text('Удалить логически')),
-                      const PopupMenuItem(value: 'hard', child: Text('Удалить физически')),
+                    itemBuilder: (ctx) => const [
+                      PopupMenuItem(value: 'view', child: Text('Карточка')),
+                      PopupMenuItem(value: 'soft', child: Text('Удалить логически')),
+                      PopupMenuItem(value: 'hard', child: Text('Удалить физически')),
                     ],
                     onSelected: (v) {
                       if (v == 'view') context.go('/pets/${p.id}');

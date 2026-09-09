@@ -4,7 +4,7 @@ import '../models/owner.dart';
 import '../models/owner_query.dart';
 import '../models/page_result.dart';
 import '../repositories/owner_repository.dart';
-import 'pet_list_notifier.dart';
+import 'load_status.dart';
 
 class OwnerListNotifier extends ChangeNotifier {
   final OwnerRepository _repository;
@@ -16,6 +16,7 @@ class OwnerListNotifier extends ChangeNotifier {
   LoadStatus _status = LoadStatus.idle;
   String? _error;
   final Set<int> _selected = {};
+  List<String> cities = const [];
 
   OwnerQuery get query => _query;
   PageResult<Owner> get result => _result;
@@ -28,10 +29,9 @@ class OwnerListNotifier extends ChangeNotifier {
     _status = LoadStatus.loading;
     _error = null;
     notifyListeners();
-
     try {
-      //throw Exception('Сервер недоступен');
       _result = await _repository.find(_query);
+      cities = await _repository.distinctCities();
       _status = LoadStatus.success;
     } catch (e) {
       _error = 'Не удалось загрузить список: $e';
@@ -48,11 +48,6 @@ class OwnerListNotifier extends ChangeNotifier {
 
   void toggleSelection(int id) {
     _selected.contains(id) ? _selected.remove(id) : _selected.add(id);
-    notifyListeners();
-  }
-
-  void clearSelection() {
-    _selected.clear();
     notifyListeners();
   }
 

@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../models/owner.dart';
-import '../repositories/owner_repository.dart';
-import '../repositories/pet_repository.dart';
-import '../widgets/confirm_delete.dart';
+import '../models/clinic.dart';
+import '../models/service.dart';
+import '../repositories/clinic_repository.dart';
+import '../repositories/service_repository.dart';
 
-class OwnerDetailScreen extends StatefulWidget {
+class ServiceDetailScreen extends StatefulWidget {
   final int id;
-  const OwnerDetailScreen({super.key, required this.id});
+  const ServiceDetailScreen({super.key, required this.id});
 
   @override
-  State<OwnerDetailScreen> createState() => _OwnerDetailScreenState();
+  State<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
 }
 
-class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
-  Owner? _owner;
+class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
+  Service? _service;
+  Clinic? _clinic;
   bool _loading = true;
   String? _error;
 
@@ -31,11 +32,18 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       _error = null;
     });
     try {
-      final owner = await context.read<OwnerRepository>().findById(widget.id);
+      final serviceRepo = context.read<ServiceRepository>();
+      final clinicRepo = context.read<ClinicRepository>();
+      final service = await serviceRepo.findById(widget.id);
+      Clinic? clinic;
+      if (service != null) {
+        clinic = await clinicRepo.findById(service.clinicId);
+      }
       setState(() {
-        _owner = owner;
+        _service = service;
+        _clinic = clinic;
         _loading = false;
-        if (owner == null) _error = 'Владелец не найден';
+        if (service == null) _error = 'Услуга не найдена';
       });
     } catch (e) {
       setState(() {
@@ -46,24 +54,13 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final owner = _owner;
-    if (owner == null) return;
-    final count = await context.read<PetRepository>().countByOwner(owner.id);
-    if (!mounted) return;
-    if (count > 0) {
-      await showBlockedDelete(
-        context,
-        title: 'Невозможно удалить',
-        body: 'Владелец «${owner.fullName}» связан с $count питомцами.\n'
-            'Сначала удалите или переназначьте питомцев.',
-      );
-      return;
-    }
+    final service = _service;
+    if (service == null) return;
     final conf = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить?'),
-        content: Text('Удалить владельца «${owner.fullName}»?'),
+        content: Text('Удалить услугу «${service.name}»?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
@@ -71,8 +68,8 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       ),
     );
     if (conf == true && mounted) {
-      await context.read<OwnerRepository>().softDelete(owner.id);
-      if (mounted) context.go('/owners');
+      await context.read<ServiceRepository>().softDelete(service.id);
+      if (mounted) context.go('/services');
     }
   }
 
@@ -80,19 +77,19 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_owner?.fullName ?? 'Владелец'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/owners')),
+        title: Text(_service?.name ?? 'Услуга'),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/services')),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              final ok = await context.push('/owners/${widget.id}/edit');
+              final ok = await context.push('/services/${widget.id}/edit');
               if (ok == true && mounted) _load();
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: _owner == null || _owner!.isDeleted ? null : _delete,
+            onPressed: _service == null || _service!.isDeleted ? null : _delete,
           ),
         ],
       ),
@@ -100,8 +97,8 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : _owner == null
-                  ? const Center(child: Text('Не найден'))
+              : _service == null
+                  ? const Center(child: Text('Не найдена'))
                   : Padding(
                       padding: const EdgeInsets.all(16),
                       child: Card(
@@ -111,13 +108,12 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(_owner!.fullName, style: Theme.of(context).textTheme.headlineSmall),
+                              Text(_service!.name, style: Theme.of(context).textTheme.headlineSmall),
                               const SizedBox(height: 12),
-                              Text('Телефон: ${_owner!.phone}'),
-                              Text('Email: ${_owner!.email}'),
-                              Text('Город: ${_owner!.city}'),
-                              Text('Страна: ${_owner!.country}'),
-                              if (_owner!.isDeleted)
+                              Text('Цена: ${_service!.price.toStringAsFixed(0)} ₽'),
+                              Text('Филиал: ${_clinic?.name ?? _service!.clinicId}'),
+                              if (_service!.description.isNotEmpty) Text('Описание: ${_service!.description}'),
+                              if (_service!.isDeleted)
                                 const Padding(
                                   padding: EdgeInsets.only(top: 12),
                                   child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

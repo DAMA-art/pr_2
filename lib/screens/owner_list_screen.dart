@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/owner.dart';
+import '../repositories/pet_repository.dart';
+import '../state/load_status.dart';
 import '../state/owner_list_notifier.dart';
-import '../state/pet_list_notifier.dart';
+import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/search_field.dart';
@@ -40,6 +42,16 @@ class OwnerListScreen extends StatelessWidget {
                 tooltip: 'Удалить выбранные',
                 onPressed: () => _confirmBulkDelete(context, notifier),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Создать',
+            onPressed: () async {
+              final ok = await context.push('/owners/new');
+              if (ok == true && context.mounted) {
+                context.read<OwnerListNotifier>().load();
+              }
             },
           ),
         ],
@@ -188,23 +200,21 @@ class OwnerListScreen extends StatelessWidget {
     OwnerListNotifier notifier,
     Owner owner,
   ) async {
-    final hard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удаление владельца'),
-        content: Text('Удалить «${owner.fullName}»?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Логически'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Физически'),
-          ),
-        ],
-      ),
+    final count = await context.read<PetRepository>().countByOwner(owner.id);
+    if (!context.mounted) return;
+    if (count > 0) {
+      await showBlockedDelete(
+        context,
+        title: 'Невозможно удалить',
+        body: 'Владелец «${owner.fullName}» связан с $count питомцами. '
+            'Сначала удалите или переназначьте питомцев.',
+      );
+      return;
+    }
+    final hard = await confirmDeleteMode(
+      context,
+      title: 'Удаление владельца',
+      body: 'Удалить «${owner.fullName}»?',
     );
     if (hard == null) return;
     if (hard) {
@@ -273,15 +283,10 @@ class _FiltersPanel extends StatelessWidget {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('Все')),
-                      DropdownMenuItem(value: 'Москва', child: Text('Москва')),
-                      DropdownMenuItem(value: 'Санкт-Петербург', child: Text('Санкт-Петербург')),
-                      DropdownMenuItem(value: 'Казань', child: Text('Казань')),
-                      DropdownMenuItem(value: 'Новосибирск', child: Text('Новосибирск')),
-                      DropdownMenuItem(value: 'Екатеринбург', child: Text('Екатеринбург')),
-                      DropdownMenuItem(value: 'Сочи', child: Text('Сочи')),
-                      DropdownMenuItem(value: 'Краснодар', child: Text('Краснодар')),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Все')),
+                      for (final city in notifier.cities)
+                        DropdownMenuItem(value: city, child: Text(city)),
                     ],
                     onChanged: (v) => notifier.applyQuery(q.copyWith(city: v)),
                   ),
@@ -289,6 +294,7 @@ class _FiltersPanel extends StatelessWidget {
                 SizedBox(
                   width: 160,
                   child: DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: q.country,
                     decoration: const InputDecoration(
                       labelText: 'Страна',

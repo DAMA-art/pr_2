@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../models/owner.dart';
-import '../repositories/owner_repository.dart';
+import '../models/clinic.dart';
+import '../repositories/clinic_repository.dart';
 import '../repositories/pet_repository.dart';
+import '../repositories/service_repository.dart';
 import '../widgets/confirm_delete.dart';
 
-class OwnerDetailScreen extends StatefulWidget {
+class ClinicDetailScreen extends StatefulWidget {
   final int id;
-  const OwnerDetailScreen({super.key, required this.id});
+  const ClinicDetailScreen({super.key, required this.id});
 
   @override
-  State<OwnerDetailScreen> createState() => _OwnerDetailScreenState();
+  State<ClinicDetailScreen> createState() => _ClinicDetailScreenState();
 }
 
-class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
-  Owner? _owner;
+class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
+  Clinic? _clinic;
   bool _loading = true;
   String? _error;
 
@@ -31,11 +32,11 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       _error = null;
     });
     try {
-      final owner = await context.read<OwnerRepository>().findById(widget.id);
+      final clinic = await context.read<ClinicRepository>().findById(widget.id);
       setState(() {
-        _owner = owner;
+        _clinic = clinic;
         _loading = false;
-        if (owner == null) _error = 'Владелец не найден';
+        if (clinic == null) _error = 'Филиал не найден';
       });
     } catch (e) {
       setState(() {
@@ -46,16 +47,18 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final owner = _owner;
-    if (owner == null) return;
-    final count = await context.read<PetRepository>().countByOwner(owner.id);
+    final clinic = _clinic;
+    if (clinic == null) return;
+    final serviceRepo = context.read<ServiceRepository>();
+    final petRepo = context.read<PetRepository>();
+    final serviceCount = await serviceRepo.countByClinic(clinic.id);
+    final petCount = await petRepo.countByClinic(clinic.id);
     if (!mounted) return;
-    if (count > 0) {
+    if (serviceCount > 0 || petCount > 0) {
       await showBlockedDelete(
         context,
         title: 'Невозможно удалить',
-        body: 'Владелец «${owner.fullName}» связан с $count питомцами.\n'
-            'Сначала удалите или переназначьте питомцев.',
+        body: 'Филиал «${clinic.name}» связан с $serviceCount услугами и $petCount питомцами.',
       );
       return;
     }
@@ -63,7 +66,7 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить?'),
-        content: Text('Удалить владельца «${owner.fullName}»?'),
+        content: Text('Удалить филиал «${clinic.name}»?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
@@ -71,8 +74,8 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       ),
     );
     if (conf == true && mounted) {
-      await context.read<OwnerRepository>().softDelete(owner.id);
-      if (mounted) context.go('/owners');
+      await context.read<ClinicRepository>().softDelete(clinic.id);
+      if (mounted) context.go('/clinics');
     }
   }
 
@@ -80,19 +83,19 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_owner?.fullName ?? 'Владелец'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/owners')),
+        title: Text(_clinic?.name ?? 'Филиал'),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/clinics')),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              final ok = await context.push('/owners/${widget.id}/edit');
+              final ok = await context.push('/clinics/${widget.id}/edit');
               if (ok == true && mounted) _load();
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: _owner == null || _owner!.isDeleted ? null : _delete,
+            onPressed: _clinic == null || _clinic!.isDeleted ? null : _delete,
           ),
         ],
       ),
@@ -100,7 +103,7 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : _owner == null
+              : _clinic == null
                   ? const Center(child: Text('Не найден'))
                   : Padding(
                       padding: const EdgeInsets.all(16),
@@ -111,13 +114,12 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(_owner!.fullName, style: Theme.of(context).textTheme.headlineSmall),
+                              Text(_clinic!.name, style: Theme.of(context).textTheme.headlineSmall),
                               const SizedBox(height: 12),
-                              Text('Телефон: ${_owner!.phone}'),
-                              Text('Email: ${_owner!.email}'),
-                              Text('Город: ${_owner!.city}'),
-                              Text('Страна: ${_owner!.country}'),
-                              if (_owner!.isDeleted)
+                              Text('Адрес: ${_clinic!.address}'),
+                              Text('Телефон: ${_clinic!.phone}'),
+                              Text('Город: ${_clinic!.city}'),
+                              if (_clinic!.isDeleted)
                                 const Padding(
                                   padding: EdgeInsets.only(top: 12),
                                   child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

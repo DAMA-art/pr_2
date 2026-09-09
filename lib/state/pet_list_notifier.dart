@@ -4,8 +4,7 @@ import '../models/page_result.dart';
 import '../models/pet.dart';
 import '../models/pet_query.dart';
 import '../repositories/pet_repository.dart';
-
-enum LoadStatus { idle, loading, success, error }
+import 'load_status.dart';
 
 class PetListNotifier extends ChangeNotifier {
   final PetRepository _repository;
@@ -29,9 +28,7 @@ class PetListNotifier extends ChangeNotifier {
     _status = LoadStatus.loading;
     _error = null;
     notifyListeners();
-
     try {
-      //throw Exception('Сервер недоступен');
       _result = await _repository.find(_query);
       _status = LoadStatus.success;
     } catch (e) {
@@ -49,11 +46,6 @@ class PetListNotifier extends ChangeNotifier {
 
   void toggleSelection(int id) {
     _selected.contains(id) ? _selected.remove(id) : _selected.add(id);
-    notifyListeners();
-  }
-
-  void clearSelection() {
-    _selected.clear();
     notifyListeners();
   }
 

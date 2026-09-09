@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../models/owner.dart';
-import '../repositories/owner_repository.dart';
+import '../models/pet.dart';
+import '../models/pet_passport.dart';
 import '../repositories/pet_repository.dart';
-import '../widgets/confirm_delete.dart';
+import '../repositories/pet_passport_repository.dart';
 
-class OwnerDetailScreen extends StatefulWidget {
+class PassportDetailScreen extends StatefulWidget {
   final int id;
-  const OwnerDetailScreen({super.key, required this.id});
+  const PassportDetailScreen({super.key, required this.id});
 
   @override
-  State<OwnerDetailScreen> createState() => _OwnerDetailScreenState();
+  State<PassportDetailScreen> createState() => _PassportDetailScreenState();
 }
 
-class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
-  Owner? _owner;
+class _PassportDetailScreenState extends State<PassportDetailScreen> {
+  PetPassport? _passport;
+  Pet? _pet;
   bool _loading = true;
   String? _error;
 
@@ -31,11 +33,18 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       _error = null;
     });
     try {
-      final owner = await context.read<OwnerRepository>().findById(widget.id);
+      final passportRepo = context.read<PetPassportRepository>();
+      final petRepo = context.read<PetRepository>();
+      final passport = await passportRepo.findById(widget.id);
+      Pet? pet;
+      if (passport != null) {
+        pet = await petRepo.findById(passport.petId);
+      }
       setState(() {
-        _owner = owner;
+        _passport = passport;
+        _pet = pet;
         _loading = false;
-        if (owner == null) _error = 'Владелец не найден';
+        if (passport == null) _error = 'Паспорт не найден';
       });
     } catch (e) {
       setState(() {
@@ -46,24 +55,13 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final owner = _owner;
-    if (owner == null) return;
-    final count = await context.read<PetRepository>().countByOwner(owner.id);
-    if (!mounted) return;
-    if (count > 0) {
-      await showBlockedDelete(
-        context,
-        title: 'Невозможно удалить',
-        body: 'Владелец «${owner.fullName}» связан с $count питомцами.\n'
-            'Сначала удалите или переназначьте питомцев.',
-      );
-      return;
-    }
+    final passport = _passport;
+    if (passport == null) return;
     final conf = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить?'),
-        content: Text('Удалить владельца «${owner.fullName}»?'),
+        content: Text('Удалить паспорт «${passport.number}»?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
@@ -71,28 +69,29 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       ),
     );
     if (conf == true && mounted) {
-      await context.read<OwnerRepository>().softDelete(owner.id);
-      if (mounted) context.go('/owners');
+      await context.read<PetPassportRepository>().softDelete(passport.id);
+      if (mounted) context.go('/passports');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final fmt = DateFormat('dd.MM.yyyy');
     return Scaffold(
       appBar: AppBar(
-        title: Text(_owner?.fullName ?? 'Владелец'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/owners')),
+        title: Text(_passport?.number ?? 'Паспорт'),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/passports')),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              final ok = await context.push('/owners/${widget.id}/edit');
+              final ok = await context.push('/passports/${widget.id}/edit');
               if (ok == true && mounted) _load();
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: _owner == null || _owner!.isDeleted ? null : _delete,
+            onPressed: _passport == null || _passport!.isDeleted ? null : _delete,
           ),
         ],
       ),
@@ -100,7 +99,7 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : _owner == null
+              : _passport == null
                   ? const Center(child: Text('Не найден'))
                   : Padding(
                       padding: const EdgeInsets.all(16),
@@ -111,13 +110,12 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(_owner!.fullName, style: Theme.of(context).textTheme.headlineSmall),
+                              Text(_passport!.number, style: Theme.of(context).textTheme.headlineSmall),
                               const SizedBox(height: 12),
-                              Text('Телефон: ${_owner!.phone}'),
-                              Text('Email: ${_owner!.email}'),
-                              Text('Город: ${_owner!.city}'),
-                              Text('Страна: ${_owner!.country}'),
-                              if (_owner!.isDeleted)
+                              Text('Питомец: ${_pet?.name ?? _passport!.petId}'),
+                              Text('Микрочип: ${_passport!.microchip}'),
+                              Text('Выдан: ${fmt.format(_passport!.issuedAt)}'),
+                              if (_passport!.isDeleted)
                                 const Padding(
                                   padding: EdgeInsets.only(top: 12),
                                   child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

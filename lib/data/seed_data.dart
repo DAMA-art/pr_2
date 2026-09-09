@@ -1,5 +1,24 @@
 import '../models/owner.dart';
 import '../models/pet.dart';
+import '../models/service.dart';
+import '../models/clinic.dart';
+import '../models/pet_passport.dart';
+
+final List<Clinic> seedClinics = [
+  const Clinic(id: 1, name: 'Центральный филиал', address: 'ул. Ленина, 10', phone: '+7-495-111-11-11', city: 'Москва'),
+  const Clinic(id: 2, name: 'Филиал на Невском', address: 'пр. Невский, 25', phone: '+7-812-222-22-22', city: 'Санкт-Петербург'),
+  const Clinic(id: 3, name: 'Филиал Баумана', address: 'ул. Баумана, 5', phone: '+7-843-333-33-33', city: 'Казань'),
+];
+
+final List<Service> seedServices = [
+  const Service(id: 1, name: 'Гигиеническая стрижка', description: 'Стрижка по гигиеническому стандарту', price: 2000.0, clinicId: 1),
+  const Service(id: 2, name: 'Модельная стрижка', description: 'Стрижка по породе / модельная', price: 3500.0, clinicId: 1),
+  const Service(id: 3, name: 'Мытьё и сушка', description: 'Комплексное мытьё с сушкой', price: 1500.0, clinicId: 2),
+  const Service(id: 4, name: 'Вычёсывание / колтуны', description: 'Расчёсывание и разбор колтунов', price: 1800.0, clinicId: 2),
+  const Service(id: 5, name: 'Стрижка когтей', description: 'Подстригание когтей', price: 500.0, clinicId: 3),
+  const Service(id: 6, name: 'Чистка ушей', description: 'Гигиена ушных раковин', price: 600.0, clinicId: 3),
+  const Service(id: 7, name: 'SPA-уход', description: 'Маска + массаж + парфюм', price: 4500.0, clinicId: 1),
+];
 
 final List<Owner> seedOwners = [
   const Owner(id: 1, lastName: 'Иванов', firstName: 'Алексей', phone: '+7-900-111-22-33', email: 'ivanov@mail.ru', city: 'Москва', country: 'Россия'),
@@ -15,26 +34,37 @@ final List<Owner> seedOwners = [
 ];
 
 final List<Pet> seedPets = [
-  const Pet(id: 1, name: 'Барсик', species: 'cat', breed: 'Британская короткошёрстная', ageMonths: 36, weightKg: 5.2, ownerId: 1, serviceIds: [1, 2], notes: 'Любит расчёсывание'),
-  const Pet(id: 2, name: 'Шарик', species: 'dog', breed: 'Лабрадор', ageMonths: 48, weightKg: 32.0, ownerId: 2, serviceIds: [1, 3], notes: 'Активный'),
-  const Pet(id: 3, name: 'Мурка', species: 'cat', breed: 'Сиамская', ageMonths: 24, weightKg: 3.8, ownerId: 3, serviceIds: [2], notes: ''),
-  const Pet(id: 4, name: 'Рекс', species: 'dog', breed: 'Немецкая овчарка', ageMonths: 60, weightKg: 38.5, ownerId: 4, serviceIds: [1, 3, 4], notes: 'Служебная собака'),
-  const Pet(id: 5, name: 'Пушок', species: 'rabbit', breed: 'Ангорский', ageMonths: 18, weightKg: 2.1, ownerId: 5, serviceIds: [2], notes: 'Длинная шерсть'),
-  const Pet(id: 6, name: 'Кеша', species: 'bird', breed: 'Волнистый попугай', ageMonths: 12, weightKg: 0.05, ownerId: 6, serviceIds: [5], notes: ''),
-  const Pet(id: 7, name: 'Боня', species: 'dog', breed: 'Йоркширский терьер', ageMonths: 30, weightKg: 3.2, ownerId: 7, serviceIds: [1, 2], notes: 'Маленькая'),
-  const Pet(id: 8, name: 'Снежок', species: 'cat', breed: 'Персидская', ageMonths: 42, weightKg: 4.5, ownerId: 8, serviceIds: [2], notes: 'Требует регулярного ухода'),
-  const Pet(id: 9, name: 'Тузик', species: 'dog', breed: 'Дворняжка', ageMonths: 72, weightKg: 15.0, ownerId: 9, serviceIds: [1], notes: ''),
-  const Pet(id: 10, name: 'Луна', species: 'cat', breed: 'Мейн-кун', ageMonths: 20, weightKg: 6.8, ownerId: 10, serviceIds: [1, 2], notes: 'Крупная'),
-  const Pet(id: 11, name: 'Гром', species: 'dog', breed: 'Хаски', ageMonths: 36, weightKg: 25.0, ownerId: 1, serviceIds: [1, 3], notes: 'Энергичный'),
-  const Pet(id: 12, name: 'Васька', species: 'cat', breed: 'Дворовая', ageMonths: 48, weightKg: 4.0, ownerId: 2, serviceIds: [2], notes: ''),
-  const Pet(id: 13, name: 'Джек', species: 'dog', breed: 'Джек-рассел-терьер', ageMonths: 28, weightKg: 7.5, ownerId: 3, serviceIds: [1], notes: ''),
-  const Pet(id: 14, name: 'Мила', species: 'cat', breed: 'Рэгдолл', ageMonths: 15, weightKg: 4.2, ownerId: 4, serviceIds: [2], notes: 'Спокойная'),
-  const Pet(id: 15, name: 'Барон', species: 'dog', breed: 'Ротвейлер', ageMonths: 54, weightKg: 42.0, ownerId: 5, serviceIds: [1, 4], notes: ''),
-  const Pet(id: 16, name: 'Зоя', species: 'rabbit', breed: 'Карликовый', ageMonths: 10, weightKg: 1.2, ownerId: 6, serviceIds: [2], notes: ''),
-  const Pet(id: 17, name: 'Чижик', species: 'bird', breed: 'Канарейка', ageMonths: 8, weightKg: 0.02, ownerId: 7, serviceIds: [5], notes: ''),
-  const Pet(id: 18, name: 'Лайма', species: 'dog', breed: 'Такса', ageMonths: 40, weightKg: 8.0, ownerId: 8, serviceIds: [1, 2], notes: ''),
-  const Pet(id: 19, name: 'Марс', species: 'cat', breed: 'Бенгальская', ageMonths: 22, weightKg: 5.0, ownerId: 9, serviceIds: [1], notes: 'Активный'),
-  const Pet(id: 20, name: 'Белка', species: 'dog', breed: 'Шпиц', ageMonths: 16, weightKg: 2.8, ownerId: 10, serviceIds: [1, 2], notes: 'Пушистая'),
-  const Pet(id: 21, name: 'Тиша', species: 'cat', breed: 'Сфинкс', ageMonths: 30, weightKg: 3.5, ownerId: 1, serviceIds: [2], notes: 'Требует особого ухода'),
-  const Pet(id: 22, name: 'Рыжик', species: 'dog', breed: 'Ирландский сеттер', ageMonths: 45, weightKg: 28.0, ownerId: 2, serviceIds: [1, 3], notes: ''),
+  const Pet(id: 1, name: 'Барсик', species: 'cat', breed: 'Британская короткошёрстная', chipNumber: '643000000000001', ageMonths: 36, weightKg: 5.2, clinicId: 1, ownerIds: [1], serviceIds: [1, 2], notes: 'Любит расчёсывание'),
+  const Pet(id: 2, name: 'Шарик', species: 'dog', breed: 'Лабрадор', chipNumber: '643000000000002', ageMonths: 48, weightKg: 32.0, clinicId: 2, ownerIds: [2], serviceIds: [3, 4], notes: 'Активный'),
+  const Pet(id: 3, name: 'Мурка', species: 'cat', breed: 'Сиамская', chipNumber: '643000000000003', ageMonths: 24, weightKg: 3.8, clinicId: 1, ownerIds: [3], serviceIds: [2], notes: ''),
+  const Pet(id: 4, name: 'Рекс', species: 'dog', breed: 'Немецкая овчарка', chipNumber: '643000000000004', ageMonths: 60, weightKg: 38.5, clinicId: 2, ownerIds: [4, 5], serviceIds: [3, 4], notes: 'Служебная собака'),
+  const Pet(id: 5, name: 'Пушок', species: 'rabbit', breed: 'Ангорский', chipNumber: '643000000000005', ageMonths: 18, weightKg: 2.1, clinicId: 3, ownerIds: [5], serviceIds: [5], notes: 'Длинная шерсть'),
+  const Pet(id: 6, name: 'Кеша', species: 'bird', breed: 'Волнистый попугай', chipNumber: '643000000000006', ageMonths: 12, weightKg: 0.05, clinicId: 3, ownerIds: [6], serviceIds: [6], notes: ''),
+  const Pet(id: 7, name: 'Боня', species: 'dog', breed: 'Йоркширский терьер', chipNumber: '643000000000007', ageMonths: 30, weightKg: 3.2, clinicId: 1, ownerIds: [7], serviceIds: [1, 2], notes: 'Маленькая'),
+  const Pet(id: 8, name: 'Снежок', species: 'cat', breed: 'Персидская', chipNumber: '643000000000008', ageMonths: 42, weightKg: 4.5, clinicId: 1, ownerIds: [8], serviceIds: [2, 7], notes: 'Требует регулярного ухода'),
+  const Pet(id: 9, name: 'Тузик', species: 'dog', breed: 'Дворняжка', chipNumber: '643000000000009', ageMonths: 72, weightKg: 15.0, clinicId: 2, ownerIds: [9], serviceIds: [3], notes: ''),
+  const Pet(id: 10, name: 'Луна', species: 'cat', breed: 'Мейн-кун', chipNumber: '643000000000010', ageMonths: 20, weightKg: 6.8, clinicId: 1, ownerIds: [10], serviceIds: [1, 2], notes: 'Крупная'),
+  const Pet(id: 11, name: 'Гром', species: 'dog', breed: 'Хаски', chipNumber: '643000000000011', ageMonths: 36, weightKg: 25.0, clinicId: 2, ownerIds: [1, 2], serviceIds: [3], notes: 'Энергичный'),
+  const Pet(id: 12, name: 'Васька', species: 'cat', breed: 'Дворовая', chipNumber: '643000000000012', ageMonths: 48, weightKg: 4.0, clinicId: 1, ownerIds: [2], serviceIds: [2], notes: ''),
+  const Pet(id: 13, name: 'Джек', species: 'dog', breed: 'Джек-рассел-терьер', chipNumber: '643000000000013', ageMonths: 28, weightKg: 7.5, clinicId: 3, ownerIds: [3], serviceIds: [5], notes: ''),
+  const Pet(id: 14, name: 'Мила', species: 'cat', breed: 'Рэгдолл', chipNumber: '643000000000014', ageMonths: 15, weightKg: 4.2, clinicId: 1, ownerIds: [4], serviceIds: [2], notes: 'Спокойная'),
+  const Pet(id: 15, name: 'Барон', species: 'dog', breed: 'Ротвейлер', chipNumber: '643000000000015', ageMonths: 54, weightKg: 42.0, clinicId: 2, ownerIds: [5], serviceIds: [3, 4], notes: ''),
+  const Pet(id: 16, name: 'Зоя', species: 'rabbit', breed: 'Карликовый', chipNumber: '643000000000016', ageMonths: 10, weightKg: 1.2, clinicId: 3, ownerIds: [6], serviceIds: [5], notes: ''),
+  const Pet(id: 17, name: 'Чижик', species: 'bird', breed: 'Канарейка', chipNumber: '643000000000017', ageMonths: 8, weightKg: 0.02, clinicId: 3, ownerIds: [7], serviceIds: [6], notes: ''),
+  const Pet(id: 18, name: 'Лайма', species: 'dog', breed: 'Такса', chipNumber: '643000000000018', ageMonths: 40, weightKg: 8.0, clinicId: 1, ownerIds: [8], serviceIds: [1, 2], notes: ''),
+  const Pet(id: 19, name: 'Марс', species: 'cat', breed: 'Бенгальская', chipNumber: '643000000000019', ageMonths: 22, weightKg: 5.0, clinicId: 2, ownerIds: [9], serviceIds: [3], notes: 'Активный'),
+  const Pet(id: 20, name: 'Белка', species: 'dog', breed: 'Шпиц', chipNumber: '643000000000020', ageMonths: 16, weightKg: 2.8, clinicId: 1, ownerIds: [10], serviceIds: [1, 2], notes: 'Пушистая'),
+  const Pet(id: 21, name: 'Тиша', species: 'cat', breed: 'Сфинкс', chipNumber: '643000000000021', ageMonths: 30, weightKg: 3.5, clinicId: 1, ownerIds: [1], serviceIds: [2, 7], notes: 'Требует особого ухода'),
+  const Pet(id: 22, name: 'Рыжик', species: 'dog', breed: 'Ирландский сеттер', chipNumber: '643000000000022', ageMonths: 45, weightKg: 28.0, clinicId: 2, ownerIds: [2], serviceIds: [3, 4], notes: ''),
+];
+
+final List<PetPassport> seedPetPassports = [
+  PetPassport(id: 1, petId: 1, number: 'PP-0001', microchip: '643000000000001', issuedAt: DateTime(2024, 1, 15)),
+  PetPassport(id: 2, petId: 2, number: 'PP-0002', microchip: '643000000000002', issuedAt: DateTime(2024, 3, 20)),
+  PetPassport(id: 3, petId: 3, number: 'PP-0003', microchip: '643000000000003', issuedAt: DateTime(2023, 11, 5)),
+  PetPassport(id: 4, petId: 4, number: 'PP-0004', microchip: '643000000000004', issuedAt: DateTime(2024, 2, 10)),
+  PetPassport(id: 5, petId: 7, number: 'PP-0007', microchip: '643000000000007', issuedAt: DateTime(2024, 5, 1)),
+  PetPassport(id: 6, petId: 8, number: 'PP-0008', microchip: '643000000000008', issuedAt: DateTime(2023, 8, 18)),
+  PetPassport(id: 7, petId: 10, number: 'PP-0010', microchip: '643000000000010', issuedAt: DateTime(2024, 6, 12)),
+  PetPassport(id: 8, petId: 11, number: 'PP-0011', microchip: '643000000000011', issuedAt: DateTime(2024, 4, 4)),
 ];
