@@ -28,8 +28,7 @@ class SchemaMigration {
     await prefs.setInt(versionKey, currentVersion);
 
     if (stored == null && !hadLegacy) return null;
-    return 'Формат данных обновлён. Карты лояльности заменены паспортами питомцев; '
-        'старые записи загружены в совместимом режиме и не приводят к сбою.';
+    return 'Формат данных обновлён';
   }
 
   static Future<void> _copyIfPresent(SharedPreferences prefs, String from, String to) async {
