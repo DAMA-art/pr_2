@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../api/app_exceptions.dart';
 import '../models/clinic.dart';
 import '../repositories/clinic_repository.dart';
 import '../utils/validators.dart';
@@ -21,6 +22,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   final _addressCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
+  final _slotsCtrl = TextEditingController(text: '5');
 
   bool _loading = true;
   bool _saving = false;
@@ -34,13 +36,16 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
 
   Future<void> _load() async {
     if (widget.isEditing) {
-      final clinic = await context.read<ClinicRepository>().findById(widget.id!);
-      if (clinic != null && mounted) {
-        _nameCtrl.text = clinic.name;
-        _addressCtrl.text = clinic.address;
-        _phoneCtrl.text = clinic.phone;
-        _cityCtrl.text = clinic.city;
-      }
+      try {
+        final clinic = await context.read<ClinicRepository>().findById(widget.id!);
+        if (clinic != null && mounted) {
+          _nameCtrl.text = clinic.name;
+          _addressCtrl.text = clinic.address;
+          _phoneCtrl.text = clinic.phone;
+          _cityCtrl.text = clinic.city;
+          _slotsCtrl.text = clinic.slotsTotal.toString();
+        }
+      } catch (_) {}
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -50,12 +55,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     if (!_formKey.currentState!.validate()) return false;
 
     final repo = context.read<ClinicRepository>();
-    final unique = await repo.isNameUnique(_nameCtrl.text.trim(), excludeId: widget.id);
-    if (!unique) {
-      setState(() => _nameUniqueError = 'Филиал с таким названием уже есть');
-      return false;
-    }
-
     setState(() => _saving = true);
     final clinic = Clinic(
       id: widget.id ?? 0,
@@ -63,6 +62,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
       address: _addressCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
       city: _cityCtrl.text.trim(),
+      slotsTotal: int.parse(_slotsCtrl.text),
     );
     try {
       if (widget.isEditing) {
@@ -71,6 +71,12 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         await repo.create(clinic);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() => _nameUniqueError = e.fieldErrors['name']);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return false;
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       return false;
@@ -85,6 +91,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     _addressCtrl.dispose();
     _phoneCtrl.dispose();
     _cityCtrl.dispose();
+    _slotsCtrl.dispose();
     super.dispose();
   }
 
@@ -128,6 +135,12 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             () => Validators.required(v, field: 'Город'),
             () => Validators.maxLength(v, 80, field: 'Город'),
           ]),
+        ),
+        AppFieldSpec.text(
+          label: 'Мест стационара *',
+          controller: _slotsCtrl,
+          keyboardType: TextInputType.number,
+          validator: (v) => Validators.nonNegativeInt(v, field: 'Число мест'),
         ),
       ],
     );

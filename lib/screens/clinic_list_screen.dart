@@ -5,6 +5,7 @@ import '../models/clinic.dart';
 import '../repositories/pet_repository.dart';
 import '../repositories/service_repository.dart';
 import '../state/clinic_list_notifier.dart';
+import '../state/load_status.dart';
 import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/pagination_bar.dart';
@@ -86,21 +87,38 @@ class ClinicListScreen extends StatelessWidget {
           ),
           if (notifier.loading) const LinearProgressIndicator(),
           Expanded(child: _body(context, notifier)),
-          PaginationBar(
-            result: notifier.result,
-            currentSize: notifier.query.size,
-            onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
-            onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
-          ),
+          if (notifier.status == LoadStatus.success)
+            PaginationBar(
+              result: notifier.result,
+              currentSize: notifier.query.size,
+              onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
+              onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
+            ),
         ],
       ),
     );
   }
 
   Widget _body(BuildContext context, ClinicListNotifier notifier) {
-    final items = notifier.result.items;
-    if (items.isEmpty) return const Center(child: Text('Нет филиалов'));
-    return EntityTable<Clinic>(
+    switch (notifier.status) {
+      case LoadStatus.idle:
+      case LoadStatus.loading:
+        return const Center(child: CircularProgressIndicator());
+      case LoadStatus.error:
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(notifier.error ?? 'Ошибка', textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () => notifier.load(), child: const Text('Повторить')),
+            ],
+          ),
+        );
+      case LoadStatus.success:
+        final items = notifier.result.items;
+        if (items.isEmpty) return const Center(child: Text('Нет филиалов'));
+        return EntityTable<Clinic>(
       items: items,
       idOf: (c) => c.id,
       selected: notifier.selected,
@@ -143,6 +161,7 @@ class ClinicListScreen extends StatelessWidget {
         ],
       ],
     );
+    }
   }
 
   Future<void> _delete(BuildContext context, ClinicListNotifier notifier, Clinic c) async {

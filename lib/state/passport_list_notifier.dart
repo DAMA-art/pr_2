@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../api/app_exceptions.dart';
 import '../models/page_result.dart';
 import '../models/pet_passport.dart';
 import '../models/pet_passport_query.dart';
@@ -27,6 +28,8 @@ class PassportListNotifier extends ChangeNotifier {
     try {
       _result = await _repo.find(_query);
       status = LoadStatus.success;
+    } on CancelledException {
+      return;
     } catch (e) {
       error = e.toString();
       status = LoadStatus.error;

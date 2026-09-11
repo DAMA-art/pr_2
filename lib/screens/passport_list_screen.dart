@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
 import '../repositories/pet_repository.dart';
+import '../state/load_status.dart';
 import '../state/passport_list_notifier.dart';
 import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
@@ -106,69 +107,90 @@ class _PassportListScreenState extends State<PassportListScreen> {
             ),
           ),
           if (notifier.loading) const LinearProgressIndicator(),
-          Expanded(
-            child: notifier.result.items.isEmpty
-                ? const Center(child: Text('Нет паспортов'))
-                : EntityTable<PetPassport>(
-                    items: notifier.result.items,
-                    idOf: (p) => p.id,
-                    selected: notifier.selected,
-                    onToggleSelect: notifier.toggleSelection,
-                    sortField: notifier.query.sortField,
-                    sortAscending: notifier.query.sortAscending,
-                    isDeleted: (p) => p.isDeleted,
-                    onSort: (field) {
-                      final q = notifier.query;
-                      notifier.applyQuery(q.copyWith(
-                        sortField: field,
-                        sortAscending: field == q.sortField ? !q.sortAscending : true,
-                      ));
-                    },
-                    columns: [
-                      TableColumnSpec(label: 'Номер', sortField: 'number', build: (p) => Text(p.number)),
-                      TableColumnSpec(label: 'Питомец', build: (p) => Text(_petName(p.petId))),
-                      TableColumnSpec(label: 'Микрочип', sortField: 'microchip', build: (p) => Text(p.microchip)),
-                      TableColumnSpec(
-                        label: 'Выдан',
-                        sortField: 'issuedAt',
-                        build: (p) => Text(fmt.format(p.issuedAt)),
-                      ),
-                    ],
-                    actions: (p) => [
-                      if (p.isDeleted)
-                        IconButton(
-                          icon: const Icon(Icons.restore, color: Colors.green),
-                          onPressed: () => notifier.restore(p.id),
-                        )
-                      else ...[
-                        IconButton(
-                          icon: const Icon(Icons.visibility),
-                          onPressed: () => context.go('/passports/${p.id}'),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () async {
-                            final ok = await context.push('/passports/${p.id}/edit');
-                            if (ok == true) notifier.load();
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _delete(context, notifier, p),
-                        ),
-                      ],
-                    ],
-                  ),
-          ),
-          PaginationBar(
-            result: notifier.result,
-            currentSize: notifier.query.size,
-            onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
-            onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
-          ),
+          Expanded(child: _buildBody(context, notifier, fmt)),
+          if (notifier.status == LoadStatus.success)
+            PaginationBar(
+              result: notifier.result,
+              currentSize: notifier.query.size,
+              onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
+              onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
+            ),
         ],
       ),
     );
+  }
+
+  Widget _buildBody(BuildContext context, PassportListNotifier notifier, DateFormat fmt) {
+    switch (notifier.status) {
+      case LoadStatus.idle:
+      case LoadStatus.loading:
+        return const Center(child: CircularProgressIndicator());
+      case LoadStatus.error:
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(notifier.error ?? 'Ошибка', textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () => notifier.load(), child: const Text('Повторить')),
+            ],
+          ),
+        );
+      case LoadStatus.success:
+        if (notifier.result.items.isEmpty) {
+          return const Center(child: Text('Нет паспортов'));
+        }
+        return EntityTable<PetPassport>(
+          items: notifier.result.items,
+          idOf: (p) => p.id,
+          selected: notifier.selected,
+          onToggleSelect: notifier.toggleSelection,
+          sortField: notifier.query.sortField,
+          sortAscending: notifier.query.sortAscending,
+          isDeleted: (p) => p.isDeleted,
+          onSort: (field) {
+            final q = notifier.query;
+            notifier.applyQuery(q.copyWith(
+              sortField: field,
+              sortAscending: field == q.sortField ? !q.sortAscending : true,
+            ));
+          },
+          columns: [
+            TableColumnSpec(label: 'Номер', sortField: 'number', build: (p) => Text(p.number)),
+            TableColumnSpec(label: 'Питомец', build: (p) => Text(_petName(p.petId))),
+            TableColumnSpec(label: 'Микрочип', sortField: 'microchip', build: (p) => Text(p.microchip)),
+            TableColumnSpec(
+              label: 'Выдан',
+              sortField: 'issuedAt',
+              build: (p) => Text(fmt.format(p.issuedAt)),
+            ),
+          ],
+          actions: (p) => [
+            if (p.isDeleted)
+              IconButton(
+                icon: const Icon(Icons.restore, color: Colors.green),
+                onPressed: () => notifier.restore(p.id),
+              )
+            else ...[
+              IconButton(
+                icon: const Icon(Icons.visibility),
+                onPressed: () => context.go('/passports/${p.id}'),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () async {
+                  final ok = await context.push('/passports/${p.id}/edit');
+                  if (ok == true) notifier.load();
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => _delete(context, notifier, p),
+              ),
+            ],
+          ],
+        );
+    }
   }
 
   Future<void> _delete(BuildContext context, PassportListNotifier notifier, PetPassport p) async {

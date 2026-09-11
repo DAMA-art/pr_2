@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../api/app_exceptions.dart';
 import '../models/pet.dart';
 import '../models/owner.dart';
 import '../models/service.dart';
@@ -11,6 +13,7 @@ import '../repositories/owner_repository.dart';
 import '../repositories/service_repository.dart';
 import '../repositories/clinic_repository.dart';
 import '../repositories/pet_passport_repository.dart';
+import '../repositories/visit_repository.dart';
 import '../utils/species.dart';
 
 class PetDetailScreen extends StatefulWidget {
@@ -28,6 +31,7 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
   List<Service> _services = [];
   PetPassport? _passport;
   bool _loading = true;
+  bool _boarding = false;
   String? _error;
 
   @override
@@ -84,6 +88,35 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
     }
   }
 
+  Future<void> _boardAtClinic() async {
+    final pet = _pet;
+    if (pet == null || _boarding) return;
+    setState(() => _boarding = true);
+    try {
+      await context.read<VisitRepository>().create(
+            petId: pet.id,
+            clinicId: pet.clinicId,
+            days: 3,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Питомец заселён в филиал')),
+      );
+      await _load();
+    } on ConflictException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } on AppException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _boarding = false);
+    }
+  }
+
   Future<void> _delete() async {
     final pet = _pet;
     if (pet == null) return;
@@ -132,7 +165,16 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      FilledButton(onPressed: _load, child: const Text('Повторить')),
+                    ],
+                  ),
+                )
               : _pet == null
                   ? const Center(child: Text('Не найден'))
                   : ListView(
@@ -151,7 +193,10 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                                 Text('Порода: ${_pet!.breed}'),
                                 Text('Возраст: ${_pet!.ageMonths} мес.'),
                                 Text('Вес: ${_pet!.weightKg} кг'),
-                                Text('Филиал: ${_clinic?.name ?? _pet!.clinicId}'),
+                                Text(
+                                  'Филиал: ${_clinic?.name ?? _pet!.clinicId}'
+                                  '${_clinic != null ? ' (мест: ${_clinic!.slotsAvailable}/${_clinic!.slotsTotal})' : ''}',
+                                ),
                                 Text(
                                   'Владельцы: ${_owners.isEmpty ? '—' : _owners.map((o) => o.fullName).join(', ')}',
                                 ),
@@ -162,8 +207,23 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                                 if (_pet!.isDeleted)
                                   const Padding(
                                     padding: EdgeInsets.only(top: 12),
-                                    child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    child: Text(
+                                      'УДАЛЁН',
+                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                    ),
                                   ),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  onPressed: _pet!.isDeleted || _boarding ? null : _boardAtClinic,
+                                  icon: _boarding
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.hotel),
+                                  label: Text(_boarding ? 'Заселение…' : 'Заселить в филиал'),
+                                ),
                               ],
                             ),
                           ),

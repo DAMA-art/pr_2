@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../api/app_exceptions.dart';
 import '../models/owner.dart';
 import '../models/owner_query.dart';
 import '../models/page_result.dart';
@@ -33,6 +34,8 @@ class OwnerListNotifier extends ChangeNotifier {
       _result = await _repository.find(_query);
       cities = await _repository.distinctCities();
       _status = LoadStatus.success;
+    } on CancelledException {
+      return;
     } catch (e) {
       _error = 'Не удалось загрузить список: $e';
       _status = LoadStatus.error;

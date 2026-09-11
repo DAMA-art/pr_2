@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../api/app_exceptions.dart';
 import '../models/page_result.dart';
 import '../models/pet.dart';
 import '../models/pet_query.dart';
@@ -30,9 +31,11 @@ class PetListNotifier extends ChangeNotifier {
     notifyListeners();
     try {
       _result = await _repository.find(_query);
-      _status = LoadStatus.success;
+      _status = _result.items.isEmpty ? LoadStatus.success : LoadStatus.success;
+    } on CancelledException {
+      return;
     } catch (e) {
-      _error = 'Не удалось загрузить список: $e';
+      _error = e.toString();
       _status = LoadStatus.error;
     }
     notifyListeners();

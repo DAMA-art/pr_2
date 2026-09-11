@@ -47,14 +47,12 @@ class Owner {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'lastName': lastName,
         'firstName': firstName,
         'phone': phone,
         'email': email,
         'city': city,
         'country': country,
-        'deletedAt': deletedAt?.toIso8601String(),
       };
 
   factory Owner.fromJson(Map<String, dynamic>? json) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../api/app_exceptions.dart';
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
 import '../models/owner.dart';
@@ -107,25 +108,7 @@ class _PetFormScreenState extends State<PetFormScreen> {
     if (!_formKey.currentState!.validate()) return false;
 
     final petRepo = context.read<PetRepository>();
-    final unique = await petRepo.isChipUnique(_chipCtrl.text.trim(), excludeId: widget.id);
-    if (!mounted) return false;
-    if (!unique) {
-      setState(() => _chipUniqueError = 'Номер чипа уже используется');
-      return false;
-    }
-
     final passportRepo = context.read<PetPassportRepository>();
-    if (_hasPassport) {
-      final numberUnique = await passportRepo.isNumberUnique(
-        _passportNumberCtrl.text.trim(),
-        excludeId: _passportId,
-      );
-      if (!mounted) return false;
-      if (!numberUnique) {
-        setState(() => _passportUniqueError = 'Номер паспорта уже используется');
-        return false;
-      }
-    }
 
     setState(() => _saving = true);
     final pet = Pet(
@@ -170,9 +153,25 @@ class _PetFormScreenState extends State<PetFormScreen> {
         await passportRepo.softDelete(_passportId!);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _chipUniqueError = e.fieldErrors['chipNumber'] ?? e.fieldErrors['isbn'];
+          _passportUniqueError = e.fieldErrors['number'];
+        });
+        if (e.fieldErrors.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
+      return false;
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }
       return false;
     } finally {

@@ -1,19 +1,23 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_strategy/url_strategy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api/auth_api.dart';
+import 'api/dio_client.dart';
+import 'api/directory_cache.dart';
 import 'models/owner_query.dart';
 import 'models/pet_query.dart';
 import 'models/service_query.dart';
 import 'models/clinic_query.dart';
 import 'models/pet_passport_query.dart';
-import 'repositories/persistent_owner_repository.dart';
-import 'repositories/persistent_pet_repository.dart';
-import 'repositories/persistent_service_repository.dart';
-import 'repositories/persistent_clinic_repository.dart';
-import 'repositories/persistent_pet_passport_repository.dart';
+import 'repositories/api_owner_repository.dart';
+import 'repositories/api_pet_repository.dart';
+import 'repositories/api_service_repository.dart';
+import 'repositories/api_clinic_repository.dart';
+import 'repositories/api_pet_passport_repository.dart';
+import 'repositories/visit_repository.dart';
 import 'repositories/owner_repository.dart';
 import 'repositories/pet_repository.dart';
 import 'repositories/service_repository.dart';
@@ -39,37 +43,48 @@ import 'state/pet_list_notifier.dart';
 import 'state/service_list_notifier.dart';
 import 'state/clinic_list_notifier.dart';
 import 'state/passport_list_notifier.dart';
-import 'utils/schema_migration.dart';
 
 final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
-  final prefs = await SharedPreferences.getInstance();
-  final migrationMessage = await SchemaMigration.migrate(prefs);
+
+  final dio = createDio();
+  final cache = DirectoryCache();
+
+  String? bootError;
+  try {
+    await AuthApi(dio).login(username: 'admin', password: 'admin123');
+  } catch (e) {
+    bootError = 'Не удалось войти в API: $e';
+  }
+
   runApp(
     MultiProvider(
       providers: [
-        Provider<PetRepository>(create: (_) => PersistentPetRepository(prefs)),
-        Provider<OwnerRepository>(create: (_) => PersistentOwnerRepository(prefs)),
-        Provider<ServiceRepository>(create: (_) => PersistentServiceRepository(prefs)),
-        Provider<ClinicRepository>(create: (_) => PersistentClinicRepository(prefs)),
-        Provider<PetPassportRepository>(create: (_) => PersistentPetPassportRepository(prefs)),
+        Provider<Dio>.value(value: dio),
+        Provider<DirectoryCache>.value(value: cache),
+        Provider<PetRepository>(create: (_) => ApiPetRepository(dio)),
+        Provider<OwnerRepository>(create: (_) => ApiOwnerRepository(dio, cache)),
+        Provider<ServiceRepository>(create: (_) => ApiServiceRepository(dio, cache)),
+        Provider<ClinicRepository>(create: (_) => ApiClinicRepository(dio, cache)),
+        Provider<PetPassportRepository>(create: (_) => ApiPetPassportRepository(dio)),
+        Provider(create: (_) => VisitRepository(dio)),
         ChangeNotifierProvider(create: (c) => PetListNotifier(c.read<PetRepository>())..load()),
         ChangeNotifierProvider(create: (c) => OwnerListNotifier(c.read<OwnerRepository>())..load()),
         ChangeNotifierProvider(create: (c) => ServiceListNotifier(c.read<ServiceRepository>())..load()),
         ChangeNotifierProvider(create: (c) => ClinicListNotifier(c.read<ClinicRepository>())..load()),
         ChangeNotifierProvider(create: (c) => PassportListNotifier(c.read<PetPassportRepository>())..load()),
       ],
-      child: ZooSalonApp(migrationMessage: migrationMessage),
+      child: ZooSalonApp(bootError: bootError),
     ),
   );
 }
 
 class ZooSalonApp extends StatefulWidget {
-  final String? migrationMessage;
-  const ZooSalonApp({super.key, this.migrationMessage});
+  final String? bootError;
+  const ZooSalonApp({super.key, this.bootError});
 
   @override
   State<ZooSalonApp> createState() => _ZooSalonAppState();
@@ -79,7 +94,7 @@ class _ZooSalonAppState extends State<ZooSalonApp> {
   @override
   void initState() {
     super.initState();
-    final msg = widget.migrationMessage;
+    final msg = widget.bootError;
     if (msg != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _messengerKey.currentState?.showSnackBar(

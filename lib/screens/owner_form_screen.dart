@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../api/app_exceptions.dart';
 import '../models/owner.dart';
 import '../repositories/owner_repository.dart';
 import '../utils/validators.dart';
@@ -54,12 +55,6 @@ class _OwnerFormScreenState extends State<OwnerFormScreen> {
     if (!_formKey.currentState!.validate()) return false;
 
     final ownerRepo = context.read<OwnerRepository>();
-    final unique = await ownerRepo.isEmailUnique(_emailCtrl.text.trim(), excludeId: widget.id);
-    if (!unique) {
-      setState(() => _emailUniqueError = 'Такой email уже зарегистрирован');
-      return false;
-    }
-
     setState(() => _saving = true);
     try {
       final owner = Owner(
@@ -77,9 +72,17 @@ class _OwnerFormScreenState extends State<OwnerFormScreen> {
         await ownerRepo.create(owner);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() => _emailUniqueError = e.fieldErrors['email']);
+        if (_emailUniqueError == null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
+      return false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }
       return false;
     } finally {

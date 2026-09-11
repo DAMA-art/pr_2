@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../api/app_exceptions.dart';
 import '../models/page_result.dart';
 import '../models/service.dart';
 import '../models/service_query.dart';
@@ -27,6 +28,8 @@ class ServiceListNotifier extends ChangeNotifier {
     try {
       _result = await _repo.find(_query);
       status = LoadStatus.success;
+    } on CancelledException {
+      return;
     } catch (e) {
       error = e.toString();
       status = LoadStatus.error;

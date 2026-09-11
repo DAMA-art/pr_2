@@ -9,8 +9,11 @@ class Pet {
   final int ageMonths;
   final double weightKg;
   final int clinicId;
+  final String? clinicName;
   final List<int> ownerIds;
+  final List<String> ownerNames;
   final List<int> serviceIds;
+  final List<String> serviceNames;
   final String notes;
   final DateTime? deletedAt;
 
@@ -23,8 +26,11 @@ class Pet {
     required this.ageMonths,
     required this.weightKg,
     required this.clinicId,
+    this.clinicName,
     required this.ownerIds,
+    this.ownerNames = const [],
     required this.serviceIds,
+    this.serviceNames = const [],
     this.notes = '',
     this.deletedAt,
   });
@@ -39,8 +45,11 @@ class Pet {
     int? ageMonths,
     double? weightKg,
     int? clinicId,
+    String? clinicName,
     List<int>? ownerIds,
+    List<String>? ownerNames,
     List<int>? serviceIds,
+    List<String>? serviceNames,
     String? notes,
     DateTime? deletedAt,
     bool clearDeletedAt = false,
@@ -54,15 +63,17 @@ class Pet {
       ageMonths: ageMonths ?? this.ageMonths,
       weightKg: weightKg ?? this.weightKg,
       clinicId: clinicId ?? this.clinicId,
+      clinicName: clinicName ?? this.clinicName,
       ownerIds: ownerIds ?? this.ownerIds,
+      ownerNames: ownerNames ?? this.ownerNames,
       serviceIds: serviceIds ?? this.serviceIds,
+      serviceNames: serviceNames ?? this.serviceNames,
       notes: notes ?? this.notes,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'name': name,
         'species': species,
         'breed': breed,
@@ -73,16 +84,44 @@ class Pet {
         'ownerIds': ownerIds,
         'serviceIds': serviceIds,
         'notes': notes,
-        'deletedAt': deletedAt?.toIso8601String(),
       };
 
   factory Pet.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);
+    final clinic = JsonHelpers.asMap(map['clinic']);
     var ownerIds = JsonHelpers.asIntList(map['ownerIds']);
+    var ownerNames = <String>[];
+    final owners = map['owners'];
+    if (owners is List) {
+      ownerIds = [
+        for (final o in owners) JsonHelpers.asInt(JsonHelpers.asMap(o)['id']),
+      ];
+      ownerNames = [
+        for (final o in owners)
+          JsonHelpers.asString(
+            JsonHelpers.asMap(o)['fullName'].toString().isEmpty
+                ? '${JsonHelpers.asMap(o)['lastName']} ${JsonHelpers.asMap(o)['firstName']}'
+                : JsonHelpers.asMap(o)['fullName'],
+          ),
+      ];
+    }
     if (ownerIds.isEmpty) {
       final single = JsonHelpers.asInt(map['ownerId']);
       if (single > 0) ownerIds = [single];
     }
+
+    var serviceIds = JsonHelpers.asIntList(map['serviceIds']);
+    var serviceNames = <String>[];
+    final services = map['services'];
+    if (services is List) {
+      serviceIds = [
+        for (final s in services) JsonHelpers.asInt(JsonHelpers.asMap(s)['id']),
+      ];
+      serviceNames = [
+        for (final s in services) JsonHelpers.asString(JsonHelpers.asMap(s)['name']),
+      ];
+    }
+
     return Pet(
       id: JsonHelpers.asInt(map['id']),
       name: JsonHelpers.asString(map['name']),
@@ -91,9 +130,14 @@ class Pet {
       chipNumber: JsonHelpers.asString(map['chipNumber']),
       ageMonths: JsonHelpers.asInt(map['ageMonths']),
       weightKg: JsonHelpers.asDouble(map['weightKg']),
-      clinicId: JsonHelpers.asInt(map['clinicId']),
+      clinicId: clinic.isNotEmpty
+          ? JsonHelpers.asInt(clinic['id'])
+          : JsonHelpers.asInt(map['clinicId']),
+      clinicName: clinic.isNotEmpty ? JsonHelpers.asString(clinic['name']) : null,
       ownerIds: ownerIds,
-      serviceIds: JsonHelpers.asIntList(map['serviceIds']),
+      ownerNames: ownerNames,
+      serviceIds: serviceIds,
+      serviceNames: serviceNames,
       notes: JsonHelpers.asString(map['notes']),
       deletedAt: JsonHelpers.asDateTime(map['deletedAt']),
     );

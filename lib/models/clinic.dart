@@ -6,6 +6,8 @@ class Clinic {
   final String address;
   final String phone;
   final String city;
+  final int slotsTotal;
+  final int slotsAvailable;
   final DateTime? deletedAt;
 
   const Clinic({
@@ -14,6 +16,8 @@ class Clinic {
     required this.address,
     required this.phone,
     required this.city,
+    this.slotsTotal = 0,
+    this.slotsAvailable = 0,
     this.deletedAt,
   });
 
@@ -24,6 +28,8 @@ class Clinic {
     String? address,
     String? phone,
     String? city,
+    int? slotsTotal,
+    int? slotsAvailable,
     DateTime? deletedAt,
     bool clearDeletedAt = false,
   }) {
@@ -33,27 +39,31 @@ class Clinic {
       address: address ?? this.address,
       phone: phone ?? this.phone,
       city: city ?? this.city,
+      slotsTotal: slotsTotal ?? this.slotsTotal,
+      slotsAvailable: slotsAvailable ?? this.slotsAvailable,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'name': name,
         'address': address,
         'phone': phone,
         'city': city,
-        'deletedAt': deletedAt?.toIso8601String(),
+        'slotsTotal': slotsTotal,
       };
 
   factory Clinic.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);
+    final slots = JsonHelpers.asInt(map['slotsTotal']);
     return Clinic(
       id: JsonHelpers.asInt(map['id']),
       name: JsonHelpers.asString(map['name']),
       address: JsonHelpers.asString(map['address']),
       phone: JsonHelpers.asString(map['phone']),
       city: JsonHelpers.asString(map['city']),
+      slotsTotal: slots,
+      slotsAvailable: JsonHelpers.asInt(map['slotsAvailable'], slots),
       deletedAt: JsonHelpers.asDateTime(map['deletedAt']),
     );
   }
