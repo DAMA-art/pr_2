@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import '../models/pet.dart';
 import '../models/pet_query.dart';
 import '../models/clinic.dart';
+import '../models/role.dart';
 import '../repositories/clinic_repository.dart';
 import '../repositories/pet_passport_repository.dart';
+import '../state/auth_notifier.dart';
 import '../state/load_status.dart';
 import '../state/pet_list_notifier.dart';
 import '../utils/species.dart';
@@ -30,8 +32,10 @@ class PetListScreen extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Center(
-                  child: Text('Выбрано: ${notifier.selected.length}',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Выбрано: ${notifier.selected.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               );
             },
@@ -46,16 +50,17 @@ class PetListScreen extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Создать',
-            onPressed: () async {
-              final ok = await context.push('/pets/new');
-              if (ok == true && context.mounted) {
-                context.read<PetListNotifier>().load();
-              }
-            },
-          ),
+          if (context.watch<AuthNotifier>().has(Role.staff))
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Создать',
+              onPressed: () async {
+                final ok = await context.push('/pets/new');
+                if (ok == true && context.mounted) {
+                  context.read<PetListNotifier>().load();
+                }
+              },
+            ),
         ],
       ),
       body: Consumer<PetListNotifier>(
@@ -133,7 +138,8 @@ class PetListScreen extends StatelessWidget {
               onSort: (field) {
                 final next = notifier.query.copyWith(
                   sortField: field,
-                  sortAscending: field == notifier.query.sortField ? !notifier.query.sortAscending : true,
+                  sortAscending:
+                      field == notifier.query.sortField ? !notifier.query.sortAscending : true,
                 );
                 notifier.applyQuery(next);
                 _syncUrl(context, next);

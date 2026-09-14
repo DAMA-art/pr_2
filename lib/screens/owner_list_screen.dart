@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../models/role.dart';
+import '../state/auth_notifier.dart';
 import '../models/owner.dart';
 import '../repositories/pet_repository.dart';
 import '../state/load_status.dart';
@@ -44,16 +46,17 @@ class OwnerListScreen extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Создать',
-            onPressed: () async {
-              final ok = await context.push('/owners/new');
-              if (ok == true && context.mounted) {
-                context.read<OwnerListNotifier>().load();
-              }
-            },
-          ),
+          if (context.watch<AuthNotifier>().has(Role.staff))
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Создать',
+              onPressed: () async {
+                final ok = await context.push('/owners/new');
+                if (ok == true && context.mounted) {
+                  context.read<OwnerListNotifier>().load();
+                }
+              },
+            ),
         ],
       ),
       body: Consumer<OwnerListNotifier>(

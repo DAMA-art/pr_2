@@ -3,12 +3,30 @@ import 'package:flutter/foundation.dart';
 
 import 'api_config.dart';
 import 'app_exceptions.dart';
-import 'auth_session.dart';
+
+typedef TokenProvider = String? Function();
+typedef TokenRefresher = Future<void> Function();
+typedef LogoutCallback = Future<void> Function();
+
+TokenProvider? _tokenProvider;
+TokenRefresher? _tokenRefresher;
+LogoutCallback? _onRefreshFailed;
+bool _refreshing = false;
+
+void bindAuthToDio({
+  required TokenProvider tokenProvider,
+  required TokenRefresher refresher,
+  required LogoutCallback onRefreshFailed,
+}) {
+  _tokenProvider = tokenProvider;
+  _tokenRefresher = refresher;
+  _onRefreshFailed = onRefreshFailed;
+}
 
 class ApiLoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final token = AuthSession.accessToken;
+    final token = _tokenProvider?.call();
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -39,13 +57,46 @@ class ApiLoggingInterceptor extends Interceptor {
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (kDebugMode) {
       debugPrint(
         '✕ ${err.requestOptions.method} ${err.requestOptions.uri} '
         '→ ${err.response?.statusCode ?? err.type}',
       );
     }
+
+    final status = err.response?.statusCode;
+    final path = err.requestOptions.path;
+
+    // Не обновляем токен для /auth/ — иначе бесконечный цикл
+    if (status == 401 &&
+        !path.contains('/auth/') &&
+        _tokenRefresher != null &&
+        !_refreshing) {
+      _refreshing = true;
+      try {
+        await _tokenRefresher!();
+        final options = err.requestOptions;
+        final newToken = _tokenProvider?.call();
+        if (newToken != null) {
+          options.headers['Authorization'] = 'Bearer $newToken';
+        }
+        final response = await Dio(
+          BaseOptions(
+            baseUrl: options.baseUrl,
+            connectTimeout: options.connectTimeout,
+            receiveTimeout: options.receiveTimeout,
+          ),
+        ).fetch(options);
+        return handler.resolve(response);
+      } catch (_) {
+        await _onRefreshFailed?.call();
+        return handler.reject(err);
+      } finally {
+        _refreshing = false;
+      }
+    }
+
     handler.reject(err);
   }
 }

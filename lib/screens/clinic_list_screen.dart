@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../models/role.dart';
+import '../state/auth_notifier.dart';
 import '../models/clinic.dart';
 import '../repositories/pet_repository.dart';
 import '../repositories/service_repository.dart';
@@ -26,13 +29,14 @@ class ClinicListScreen extends StatelessWidget {
               icon: const Icon(Icons.delete),
               onPressed: () => notifier.deleteSelected(),
             ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final ok = await context.push('/clinics/new');
-              if (ok == true) notifier.load();
-            },
-          ),
+          if (context.watch<AuthNotifier>().has(Role.staff))
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () async {
+                final ok = await context.push('/clinics/new');
+                if (ok == true) notifier.load();
+              },
+            ),
         ],
       ),
       body: Column(

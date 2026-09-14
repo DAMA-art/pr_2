@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import '../models/role.dart';
+import '../state/auth_notifier.dart';
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
 import '../repositories/pet_repository.dart';
@@ -46,14 +49,18 @@ class _PassportListScreenState extends State<PassportListScreen> {
         title: const Text('Паспорта'),
         actions: [
           if (notifier.hasSelection)
-            IconButton(icon: const Icon(Icons.delete), onPressed: () => notifier.deleteSelected()),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final ok = await context.push('/passports/new');
-              if (ok == true) notifier.load();
-            },
-          ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => notifier.deleteSelected()
+            ),
+          if (context.watch<AuthNotifier>().has(Role.staff))
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () async {
+                final ok = await context.push('/passports/new');
+                if (ok == true) notifier.load();
+              },
+            ),
         ],
       ),
       body: Column(

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../models/role.dart';
 import '../models/clinic.dart';
 import '../models/service.dart';
 import '../repositories/clinic_repository.dart';
 import '../state/load_status.dart';
+import '../state/auth_notifier.dart';
 import '../state/service_list_notifier.dart';
 import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
@@ -44,14 +47,18 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         title: const Text('Услуги'),
         actions: [
           if (notifier.hasSelection)
-            IconButton(icon: const Icon(Icons.delete), onPressed: () => notifier.deleteSelected()),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final ok = await context.push('/services/new');
-              if (ok == true) notifier.load();
-            },
-          ),
+            IconButton(
+              icon: const Icon(Icons.delete), 
+              onPressed: () => notifier.deleteSelected()
+            ),
+          if (context.watch<AuthNotifier>().has(Role.staff))
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () async {
+                final ok = await context.push('/services/new');
+                if (ok == true) notifier.load();
+              },
+            ),
         ],
       ),
       body: Column(

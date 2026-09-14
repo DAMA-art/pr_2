@@ -162,6 +162,16 @@ function seed() {
     username: 'admin', passwordHash: hash('admin123'),
     fullName: 'Администратор', email: 'admin@zoo.local', role: 'admin',
   });
+
+    push('users', {
+    username: 'vet', passwordHash: hash('vet12345!'),
+    fullName: 'Иванова Анна', email: 'vet@zoo.local', role: 'staff',
+  });
+
+  push('users', {
+    username: 'client', passwordHash: hash('client12!'),
+    fullName: 'Петров Иван', email: 'client@zoo.local', role: 'client',
+  });
 }
 
 function slimClinic(id) {
@@ -527,7 +537,7 @@ function currentUser(req) {
   return db.users.find((u) => u.id === payload.sub && !u.deletedAt) || null;
 }
 
-const ROLE_LEVEL = { reader: 1, librarian: 2, admin: 3 };
+const ROLE_LEVEL = { client: 1, staff: 2, admin: 3 };
 
 function requireRole(res, user, minRole) {
   if (!user) {
@@ -560,6 +570,41 @@ async function handle(req, res, url) {
 
   if (path === '/api/__health' && method === 'GET') {
     return send(res, 200, { status: 'ok', time: new Date().toISOString() });
+  }
+
+  if (path === '/api/auth/register' && method === 'POST') {
+    const body = await readBody(req);
+    if (!body) return fail(res, 400, 'Тело запроса не является корректным JSON');
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    const fullName = String(body.fullName || '').trim();
+    const email = String(body.email || '').trim();
+    const errors = {};
+    if (!username || username.length < 3) errors.username = 'Логин не менее 3 символов';
+    if (!password || password.length < 8) errors.password = 'Пароль не менее 8 символов';
+    if (!/[0-9]/.test(password)) errors.password = (errors.password || '') + ' Нужна цифра';
+    if (!/[^A-Za-z0-9]/.test(password)) errors.password = (errors.password || '') + ' Нужен спецсимвол';
+    if (!fullName) errors.fullName = 'Укажите ФИО';
+    if (db.users.some((u) => u.username === username && !u.deletedAt)) errors.username = 'Логин уже занят';
+    if (Object.keys(errors).length) return send(res, 422, { message: 'Ошибка валидации', errors });
+    const id = push('users', {
+      username,
+      passwordHash: hash(password),
+      fullName: fullName || username,
+      email: email || `${username}@zoo.local`,
+      role: 'client',
+    });
+    const found = db.users.find((u) => u.id === id);
+    const now = Math.floor(Date.now() / 1000);
+    const accessToken = sign({ sub: found.id, role: found.role, type: 'access', exp: now + ACCESS_TTL });
+    const refreshToken = sign({ sub: found.id, type: 'refresh', exp: now + REFRESH_TTL });
+    db.refreshTokens.add(refreshToken);
+    return send(res, 201, {
+      accessToken,
+      refreshToken,
+      expiresIn: ACCESS_TTL,
+      user: expandUser(found),
+    });
   }
 
   if (path === '/api/auth/login' && method === 'POST') {
@@ -611,8 +656,54 @@ async function handle(req, res, url) {
     return send(res, 204);
   }
 
+  if (path === '/api/users' && method === 'GET') {
+    if (!requireRole(res, user, 'admin')) return;
+    const rows = db.users.filter((u) => !u.deletedAt).map(expandUser);
+    return send(res, 200, { content: rows, totalElements: rows.length, totalPages: 1, number: 0, size: rows.length });
+  }
+
+  if (path === '/api/stats' && method === 'GET') {
+    if (!requireRole(res, user, 'admin')) return;
+    return send(res, 200, {
+      pets: db.pets.filter((x) => !x.deletedAt).length,
+      owners: db.owners.filter((x) => !x.deletedAt).length,
+      clinics: db.clinics.filter((x) => !x.deletedAt).length,
+      services: db.services.filter((x) => !x.deletedAt).length,
+      visitsActive: db.visits.filter((x) => !x.returnedAt && !x.deletedAt).length,
+      users: db.users.filter((x) => !x.deletedAt).length,
+    });
+  }
+
+  if (path === '/api/visits' && method === 'GET') {
+    if (!requireRole(res, user, 'client')) return;
+    let rows = db.visits.filter((v) => !v.deletedAt);
+    if (user.role === 'client') {
+      rows = rows.filter((v) => !v.returnedAt);
+    }
+    return send(res, 200, {
+      content: rows.map(expandVisit),
+      totalElements: rows.length,
+      totalPages: 1,
+      number: 0,
+      size: rows.length,
+    });
+  }
+
+  if (path.match(/^\/api\/visits\/(\d+)\/extend$/) && method === 'POST') {
+    if (!requireRole(res, user, 'client')) return;
+    const id = Number(path.match(/^\/api\/visits\/(\d+)\/extend$/)[1]);
+    const v = db.visits.find((x) => x.id === id && !x.deletedAt);
+    if (!v) return fail(res, 404, 'Выдача не найдена');
+    if (v.returnedAt) return fail(res, 409, 'Уже закрыта');
+    const body = await readBody(req);
+    const days = Number((body && body.days) || 3);
+    if (!Number.isInteger(days) || days < 1 || days > 30) return fail(res, 422, 'Срок продления 1–30 дней');
+    v.dueAt = new Date(new Date(v.dueAt).getTime() + days * 86400000).toISOString();
+    return send(res, 200, expandVisit(v));
+  }
+
   if (path === '/api/visits' && method === 'POST') {
-    if (!requireRole(res, user, 'librarian')) return;
+    if (!requireRole(res, user, 'staff')) return;
     const body = await readBody(req);
     if (!body) return fail(res, 400, 'Тело запроса не является корректным JSON');
 
@@ -651,7 +742,7 @@ async function handle(req, res, url) {
 
   let m = path.match(/^\/api\/visits\/(\d+)\/return$/);
   if (m && method === 'POST') {
-    if (!requireRole(res, user, 'librarian')) return;
+    if (!requireRole(res, user, 'staff')) return;
     const visit = db.visits.find((v) => v.id === Number(m[1]) && !v.deletedAt);
     if (!visit) return fail(res, 404, 'Заселение не найдено');
     if (visit.returnedAt) return fail(res, 409, 'Заселение уже закрыто');
@@ -667,7 +758,7 @@ async function handle(req, res, url) {
   if (bulk && method === 'POST') {
     const collection = bulk[1];
     if (!COLLECTIONS.includes(collection)) return fail(res, 404, 'Ресурс не найден');
-    if (!requireRole(res, user, 'librarian')) return;
+    if (!requireRole(res, user, 'staff')) return;
     const body = await readBody(req);
     const ids = Array.isArray(body && body.ids) ? body.ids.map(Number) : [];
     if (!ids.length) {
@@ -691,7 +782,7 @@ async function handle(req, res, url) {
     const expand = EXPANDERS[collection];
 
     if (action === 'restore' && method === 'POST') {
-      if (!requireRole(res, user, 'librarian')) return;
+      if (!requireRole(res, user, 'staff')) return;
       const row = db[collection].find((x) => x.id === id);
       if (!row) return fail(res, 404, 'Объект не найден');
       row.deletedAt = null;
@@ -714,7 +805,7 @@ async function handle(req, res, url) {
     }
 
     if (id === null && method === 'POST') {
-      if (!requireRole(res, user, 'librarian')) return;
+      if (!requireRole(res, user, 'staff')) return;
       if (collection === 'visits') return fail(res, 404, 'Используйте POST /api/visits');
       const body = await readBody(req);
       if (!body) return fail(res, 400, 'Тело запроса не является корректным JSON');
@@ -730,7 +821,7 @@ async function handle(req, res, url) {
     }
 
     if (id !== null && (method === 'PUT' || method === 'PATCH')) {
-      if (!requireRole(res, user, 'librarian')) return;
+      if (!requireRole(res, user, 'staff')) return;
       const row = db[collection].find((x) => x.id === id && !x.deletedAt);
       if (!row) return fail(res, 404, 'Объект не найден');
       const body = await readBody(req);
@@ -749,7 +840,7 @@ async function handle(req, res, url) {
 
     if (id !== null && method === 'DELETE') {
       const hard = q.hard === 'true';
-      if (!requireRole(res, user, hard ? 'admin' : 'librarian')) return;
+      if (!requireRole(res, user, hard ? 'admin' : 'staff')) return;
       const index = db[collection].findIndex((x) => x.id === id);
       if (index === -1) return fail(res, 404, 'Объект не найден');
       if (hard) {
@@ -802,7 +893,7 @@ server.listen(PORT, () => {
   console.log(`  Разрешённый источник: ${ORIGIN}`);
   console.log(`  Срок жизни токена:  ${ACCESS_TTL} с`);
   console.log('');
-  console.log('  Учётные записи:  admin/admin123');
+  console.log('  Учётные записи:  admin/admin123, vet/vet12345!, client/client12!');
   console.log('  Сброс данных:    POST /api/__reset');
   console.log('  Задержка ответа: любой запрос с ?__delay=1500');
   console.log('  Ошибка по требованию: любой запрос с ?__fail=500');
