@@ -47,13 +47,13 @@ class Owner {
   }
 
   Map<String, dynamic> toJson() => {
-        'lastName': lastName,
-        'firstName': firstName,
-        'phone': phone,
-        'email': email,
-        'city': city,
-        'country': country,
-      };
+    'lastName': lastName,
+    'firstName': firstName,
+    'phone': phone,
+    'email': email,
+    'city': city,
+    'country': country,
+  };
 
   factory Owner.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);

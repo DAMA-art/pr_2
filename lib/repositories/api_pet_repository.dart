@@ -14,7 +14,7 @@ class ApiPetRepository implements PetRepository {
   final SearchCancel searchCancel;
 
   ApiPetRepository(this._dio, {SearchCancel? searchCancel})
-      : searchCancel = searchCancel ?? SearchCancel();
+    : searchCancel = searchCancel ?? SearchCancel();
 
   Map<String, dynamic> _queryParams(PetQuery q) {
     final params = <String, dynamic>{
@@ -23,7 +23,8 @@ class ApiPetRepository implements PetRepository {
       'sort': '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}',
     };
     if (q.search.trim().isNotEmpty) params['search'] = q.search.trim();
-    if (q.species != null && q.species!.isNotEmpty) params['species'] = q.species;
+    if (q.species != null && q.species!.isNotEmpty) {
+      params['species'] = q.species;}
     if (q.ownerId != null) params['ownerId'] = q.ownerId;
     if (q.clinicId != null) params['clinicId'] = q.clinicId;
     if (q.ageFrom != null) params['ageFrom'] = q.ageFrom;
@@ -83,7 +84,10 @@ class ApiPetRepository implements PetRepository {
   @override
   Future<Pet> create(Pet pet) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>('/pets', data: pet.toJson());
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/pets',
+        data: pet.toJson(),
+      );
       return Pet.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
       mapDioError(e);
@@ -93,7 +97,10 @@ class ApiPetRepository implements PetRepository {
   @override
   Future<Pet> update(Pet pet) async {
     try {
-      final res = await _dio.put<Map<String, dynamic>>('/pets/${pet.id}', data: pet.toJson());
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/pets/${pet.id}',
+        data: pet.toJson(),
+      );
       return Pet.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
       mapDioError(e);

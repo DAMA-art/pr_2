@@ -63,27 +63,38 @@ class EntityTable<T> extends StatelessWidget {
                           : null,
                     );
                   }),
-                  if (actions != null) const DataColumn(label: Text('Действия')),
+                  if (actions != null)
+                    const DataColumn(label: Text('Действия')),
                 ],
                 rows: items.map((item) {
                   final id = idOf(item);
                   final deleted = isDeleted?.call(item) ?? false;
                   return DataRow(
                     selected: selected.contains(id),
-                    onSelectChanged: onToggleSelect != null ? (_) => onToggleSelect!(id) : null,
-                    color: deleted ? WidgetStateProperty.all(Colors.red.withValues(alpha: 0.08)) : null,
+                    onSelectChanged: onToggleSelect != null
+                        ? (_) => onToggleSelect!(id)
+                        : null,
+                    color: deleted
+                        ? WidgetStateProperty.all(
+                            Colors.red.withValues(alpha: 0.08),
+                          )
+                        : null,
                     cells: [
                       if (onToggleSelect != null)
-                        DataCell(Checkbox(
-                          value: selected.contains(id),
-                          onChanged: (_) => onToggleSelect!(id),
-                        )),
+                        DataCell(
+                          Checkbox(
+                            value: selected.contains(id),
+                            onChanged: (_) => onToggleSelect!(id),
+                          ),
+                        ),
                       ...columns.map((col) => DataCell(col.build(item))),
                       if (actions != null)
-                        DataCell(Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: actions!(item),
-                        )),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: actions!(item),
+                          ),
+                        ),
                     ],
                   );
                 }).toList(),

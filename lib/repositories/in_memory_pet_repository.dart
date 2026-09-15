@@ -15,10 +15,12 @@ class InMemoryPetRepository implements PetRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.name.toLowerCase().contains(needle) ||
-              b.breed.toLowerCase().contains(needle) ||
-              b.chipNumber.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.name.toLowerCase().contains(needle) ||
+                b.breed.toLowerCase().contains(needle) ||
+                b.chipNumber.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.species != null && q.species!.isNotEmpty) {
@@ -128,15 +130,19 @@ class InMemoryPetRepository implements PetRepository {
 
   @override
   Future<bool> isChipUnique(String chipNumber, {int? excludeId}) async {
-    return !_pets.any((p) =>
-        !p.isDeleted &&
-        p.chipNumber.toLowerCase() == chipNumber.trim().toLowerCase() &&
-        p.id != excludeId);
+    return !_pets.any(
+      (p) =>
+          !p.isDeleted &&
+          p.chipNumber.toLowerCase() == chipNumber.trim().toLowerCase() &&
+          p.id != excludeId,
+    );
   }
 
   @override
   Future<int> countByOwner(int ownerId) async {
-    return _pets.where((p) => !p.isDeleted && p.ownerIds.contains(ownerId)).length;
+    return _pets
+        .where((p) => !p.isDeleted && p.ownerIds.contains(ownerId))
+        .length;
   }
 
   @override

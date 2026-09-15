@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../api/app_exceptions.dart';
 import '../models/owner.dart';
 import '../repositories/owner_repository.dart';
@@ -76,13 +77,15 @@ class _OwnerFormScreenState extends State<OwnerFormScreen> {
       if (mounted) {
         setState(() => _emailUniqueError = e.fieldErrors['email']);
         if (_emailUniqueError == null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.message)));
         }
       }
       return false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
       }
       return false;
     } finally {
@@ -140,7 +143,8 @@ class _OwnerFormScreenState extends State<OwnerFormScreen> {
           keyboardType: TextInputType.emailAddress,
           validator: Validators.email,
           onTextChanged: (_) {
-            if (_emailUniqueError != null) setState(() => _emailUniqueError = null);
+            if (_emailUniqueError != null){
+              setState(() => _emailUniqueError = null);}
           },
         ),
         AppFieldSpec.text(

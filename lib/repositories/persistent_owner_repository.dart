@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/owner.dart';
@@ -39,7 +41,10 @@ class PersistentOwnerRepository implements OwnerRepository {
   int _maxId() => _owners.map((e) => e.id).fold(0, (a, b) => a > b ? a : b);
 
   Future<void> _persist() async {
-    await _prefs.setString(_key, jsonEncode(_owners.map((e) => e.toJson()).toList()));
+    await _prefs.setString(
+      _key,
+      jsonEncode(_owners.map((e) => e.toJson()).toList()),
+    );
   }
 
   @override
@@ -50,12 +55,14 @@ class PersistentOwnerRepository implements OwnerRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.lastName.toLowerCase().contains(needle) ||
-              b.firstName.toLowerCase().contains(needle) ||
-              b.email.toLowerCase().contains(needle) ||
-              b.phone.contains(needle) ||
-              b.country.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.lastName.toLowerCase().contains(needle) ||
+                b.firstName.toLowerCase().contains(needle) ||
+                b.email.toLowerCase().contains(needle) ||
+                b.phone.contains(needle) ||
+                b.country.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.city != null && q.city!.isNotEmpty) {
@@ -67,7 +74,9 @@ class PersistentOwnerRepository implements OwnerRepository {
 
     rows.sort((a, b) {
       final result = switch (q.sortField) {
-        'firstName' => a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase()),
+        'firstName' => a.firstName.toLowerCase().compareTo(
+          b.firstName.toLowerCase(),
+        ),
         'email' => a.email.toLowerCase().compareTo(b.email.toLowerCase()),
         'city' => a.city.toLowerCase().compareTo(b.city.toLowerCase()),
         'country' => a.country.toLowerCase().compareTo(b.country.toLowerCase()),
@@ -163,15 +172,19 @@ class PersistentOwnerRepository implements OwnerRepository {
   @override
   Future<bool> isEmailUnique(String email, {int? excludeId}) async {
     final needle = email.trim().toLowerCase();
-    return !_owners.any((p) =>
-        !p.isDeleted &&
-        p.email.toLowerCase() == needle &&
-        p.id != excludeId);
+    return !_owners.any(
+      (p) =>
+          !p.isDeleted && p.email.toLowerCase() == needle && p.id != excludeId,
+    );
   }
 
   @override
   Future<List<String>> distinctCities() async {
-    final cities = _owners.where((o) => !o.isDeleted).map((o) => o.city).toSet().toList();
+    final cities = _owners
+        .where((o) => !o.isDeleted)
+        .map((o) => o.city)
+        .toSet()
+        .toList();
     cities.sort();
     return cities;
   }

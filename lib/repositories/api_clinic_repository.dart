@@ -24,7 +24,8 @@ class ApiClinicRepository implements ClinicRepository {
         'size': query.size,
         'sort': '${query.sortField},${query.sortAscending ? 'asc' : 'desc'}',
       };
-      if (query.search.trim().isNotEmpty) params['search'] = query.search.trim();
+      if (query.search.trim().isNotEmpty){
+        params['search'] = query.search.trim();}
       if (query.city != null) params['city'] = query.city;
       if (query.includeDeleted) params['includeDeleted'] = true;
 
@@ -51,7 +52,10 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   Future<Clinic?> findById(int id) async {
     try {
-      final res = await getWithRetry<Map<String, dynamic>>(_dio, '/clinics/$id');
+      final res = await getWithRetry<Map<String, dynamic>>(
+        _dio,
+        '/clinics/$id',
+      );
       return Clinic.fromJson(JsonHelpers.asMap(res.data));
     } on Object catch (e) {
       try {
@@ -75,7 +79,10 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   Future<Clinic> create(Clinic clinic) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>('/clinics', data: clinic.toJson());
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/clinics',
+        data: clinic.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Clinic.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
@@ -86,8 +93,10 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   Future<Clinic> update(Clinic clinic) async {
     try {
-      final res =
-          await _dio.put<Map<String, dynamic>>('/clinics/${clinic.id}', data: clinic.toJson());
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/clinics/${clinic.id}',
+        data: clinic.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Clinic.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
@@ -145,7 +154,9 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   Future<List<String>> distinctCities() async {
     final clinics = await findAllActive();
-    final cities = clinics.map((c) => c.city).where((c) => c.isNotEmpty).toSet().toList()..sort();
+    final cities =
+        clinics.map((c) => c.city).where((c) => c.isNotEmpty).toSet().toList()
+          ..sort();
     return cities;
   }
 }

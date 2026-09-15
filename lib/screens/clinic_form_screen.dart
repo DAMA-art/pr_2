@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../api/app_exceptions.dart';
 import '../models/clinic.dart';
 import '../repositories/clinic_repository.dart';
@@ -37,7 +38,9 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   Future<void> _load() async {
     if (widget.isEditing) {
       try {
-        final clinic = await context.read<ClinicRepository>().findById(widget.id!);
+        final clinic = await context.read<ClinicRepository>().findById(
+          widget.id!,
+        );
         if (clinic != null && mounted) {
           _nameCtrl.text = clinic.name;
           _addressCtrl.text = clinic.address;
@@ -74,11 +77,14 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     } on ValidationException catch (e) {
       if (mounted) {
         setState(() => _nameUniqueError = e.fieldErrors['name']);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
       return false;
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e'))); }
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);

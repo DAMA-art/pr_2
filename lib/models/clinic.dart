@@ -46,12 +46,12 @@ class Clinic {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'address': address,
-        'phone': phone,
-        'city': city,
-        'slotsTotal': slotsTotal,
-      };
+    'name': name,
+    'address': address,
+    'phone': phone,
+    'city': city,
+    'slotsTotal': slotsTotal,
+  };
 
   factory Clinic.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);

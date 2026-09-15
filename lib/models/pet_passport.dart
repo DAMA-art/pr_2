@@ -38,13 +38,13 @@ class PetPassport {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'petId': petId,
-        'number': number,
-        'microchip': microchip,
-        'issuedAt': issuedAt.toIso8601String(),
-        'deletedAt': deletedAt?.toIso8601String(),
-      };
+    'id': id,
+    'petId': petId,
+    'number': number,
+    'microchip': microchip,
+    'issuedAt': issuedAt.toIso8601String(),
+    'deletedAt': deletedAt?.toIso8601String(),
+  };
 
   factory PetPassport.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);

@@ -60,8 +60,7 @@ class AuthNotifier extends ChangeNotifier {
         } else {
           await logout(silent: true);
         }
-      } catch (_) {
-      }
+      } catch (_) {}
     } finally {
       _restoring = false;
       notifyListeners();
@@ -95,7 +94,10 @@ class AuthNotifier extends ChangeNotifier {
     _sessionStartedAt = DateTime.now();
     await _prefs.setString(_kAccess, result.accessToken);
     await _prefs.setString(_kRefresh, result.refreshToken);
-    await _prefs.setInt(_kSessionStarted, _sessionStartedAt!.millisecondsSinceEpoch);
+    await _prefs.setInt(
+      _kSessionStarted,
+      _sessionStartedAt!.millisecondsSinceEpoch,
+    );
     await _prefs.setInt(_kLastActivity, DateTime.now().millisecondsSinceEpoch);
     notifyListeners();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
 import '../repositories/pet_repository.dart';
@@ -63,8 +64,14 @@ class _PassportDetailScreenState extends State<PassportDetailScreen> {
         title: const Text('Удалить?'),
         content: Text('Удалить паспорт «${passport.number}»?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Нет'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Да'),
+          ),
         ],
       ),
     );
@@ -80,7 +87,10 @@ class _PassportDetailScreenState extends State<PassportDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_passport?.number ?? 'Паспорт'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/passports')),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/passports'),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -91,40 +101,51 @@ class _PassportDetailScreenState extends State<PassportDetailScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: _passport == null || _passport!.isDeleted ? null : _delete,
+            onPressed: _passport == null || _passport!.isDeleted
+                ? null
+                : _delete,
           ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : _passport == null
-                  ? const Center(child: Text('Не найден'))
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(_passport!.number, style: Theme.of(context).textTheme.headlineSmall),
-                              const SizedBox(height: 12),
-                              Text('Питомец: ${_pet?.name ?? _passport!.petId}'),
-                              Text('Микрочип: ${_passport!.microchip}'),
-                              Text('Выдан: ${fmt.format(_passport!.issuedAt)}'),
-                              if (_passport!.isDeleted)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 12),
-                                  child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                                ),
-                            ],
+          ? Center(child: Text(_error!))
+          : _passport == null
+          ? const Center(child: Text('Не найден'))
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _passport!.number,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 12),
+                      Text('Питомец: ${_pet?.name ?? _passport!.petId}'),
+                      Text('Микрочип: ${_passport!.microchip}'),
+                      Text('Выдан: ${fmt.format(_passport!.issuedAt)}'),
+                      if (_passport!.isDeleted)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'УДАЛЁН',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

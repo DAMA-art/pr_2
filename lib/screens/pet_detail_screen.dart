@@ -94,21 +94,23 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
     setState(() => _boarding = true);
     try {
       await context.read<VisitRepository>().create(
-            petId: pet.id,
-            clinicId: pet.clinicId,
-            days: 3,
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Питомец заселён в филиал')),
+        petId: pet.id,
+        clinicId: pet.clinicId,
+        days: 3,
       );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Питомец заселён в филиал')));
       await _load();
     } on ConflictException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     } on AppException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -126,8 +128,14 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
         title: const Text('Удалить?'),
         content: Text('Удалить питомца «${pet.name}»?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Нет'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Да'),
+          ),
         ],
       ),
     );
@@ -147,7 +155,10 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_pet?.name ?? 'Питомец'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/pets')),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/pets'),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -165,87 +176,108 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      FilledButton(onPressed: _load, child: const Text('Повторить')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Повторить'),
                   ),
-                )
-              : _pet == null
-                  ? const Center(child: Text('Не найден'))
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
+                ],
+              ),
+            )
+          : _pet == null
+          ? const Center(child: Text('Не найден'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_pet!.name, style: Theme.of(context).textTheme.headlineSmall),
-                                const SizedBox(height: 12),
-                                Text('Чип: ${_pet!.chipNumber}'),
-                                Text('Вид: ${speciesLabel(_pet!.species)}'),
-                                Text('Порода: ${_pet!.breed}'),
-                                Text('Возраст: ${_pet!.ageMonths} мес.'),
-                                Text('Вес: ${_pet!.weightKg} кг'),
-                                Text(
-                                  'Филиал: ${_clinic?.name ?? _pet!.clinicId}'
-                                  '${_clinic != null ? ' (мест: ${_clinic!.slotsAvailable}/${_clinic!.slotsTotal})' : ''}',
-                                ),
-                                Text(
-                                  'Владельцы: ${_owners.isEmpty ? '—' : _owners.map((o) => o.fullName).join(', ')}',
-                                ),
-                                Text(
-                                  'Услуги: ${_services.isEmpty ? '—' : _services.map((s) => s.name).join(', ')}',
-                                ),
-                                if (_pet!.notes.isNotEmpty) Text('Заметки: ${_pet!.notes}'),
-                                if (_pet!.isDeleted)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 12),
-                                    child: Text(
-                                      'УДАЛЁН',
-                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                const SizedBox(height: 16),
-                                FilledButton.icon(
-                                  onPressed: _pet!.isDeleted || _boarding ? null : _boardAtClinic,
-                                  icon: _boarding
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : const Icon(Icons.hotel),
-                                  label: Text(_boarding ? 'Заселение…' : 'Заселить в филиал'),
-                                ),
-                              ],
-                            ),
-                          ),
+                        Text(
+                          _pet!.name,
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                        if (_passport != null)
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Паспорт', style: Theme.of(context).textTheme.titleMedium),
-                                  const SizedBox(height: 8),
-                                  Text('Номер: ${_passport!.number}'),
-                                  Text('Микрочип: ${_passport!.microchip}'),
-                                  Text('Выдан: ${_passport!.issuedAt.toIso8601String().split('T').first}'),
-                                ],
+                        const SizedBox(height: 12),
+                        Text('Чип: ${_pet!.chipNumber}'),
+                        Text('Вид: ${speciesLabel(_pet!.species)}'),
+                        Text('Порода: ${_pet!.breed}'),
+                        Text('Возраст: ${_pet!.ageMonths} мес.'),
+                        Text('Вес: ${_pet!.weightKg} кг'),
+                        Text(
+                          'Филиал: ${_clinic?.name ?? _pet!.clinicId}'
+                          '${_clinic != null ? ' (мест: ${_clinic!.slotsAvailable}/${_clinic!.slotsTotal})' : ''}',
+                        ),
+                        Text(
+                          'Владельцы: ${_owners.isEmpty ? '—' : _owners.map((o) => o.fullName).join(', ')}',
+                        ),
+                        Text(
+                          'Услуги: ${_services.isEmpty ? '—' : _services.map((s) => s.name).join(', ')}',
+                        ),
+                        if (_pet!.notes.isNotEmpty)
+                          Text('Заметки: ${_pet!.notes}'),
+                        if (_pet!.isDeleted)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Text(
+                              'УДАЛЁН',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _pet!.isDeleted || _boarding
+                              ? null
+                              : _boardAtClinic,
+                          icon: _boarding
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.hotel),
+                          label: Text(
+                            _boarding ? 'Заселение…' : 'Заселить в филиал',
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                ),
+                if (_passport != null)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Паспорт',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Номер: ${_passport!.number}'),
+                          Text('Микрочип: ${_passport!.microchip}'),
+                          Text(
+                            'Выдан: ${_passport!.issuedAt.toIso8601String().split('T').first}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

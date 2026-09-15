@@ -11,7 +11,9 @@ class NetworkException extends AppException {
 }
 
 class TimeoutException extends AppException {
-  const TimeoutException([super.message = 'Превышено время ожидания ответа сервера']);
+  const TimeoutException([
+    super.message = 'Превышено время ожидания ответа сервера',
+  ]);
 }
 
 class NotFoundException extends AppException {

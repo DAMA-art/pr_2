@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../api/app_exceptions.dart';
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
@@ -53,8 +54,9 @@ class _PetFormScreenState extends State<PetFormScreen> {
   List<Service> _services = [];
   List<Clinic> _clinics = [];
 
-  List<Service> get _clinicServices =>
-      _services.where((s) => _clinicId != null && s.clinicId == _clinicId).toList();
+  List<Service> get _clinicServices => _services
+      .where((s) => _clinicId != null && s.clinicId == _clinicId)
+      .toList();
 
   @override
   void initState() {
@@ -126,7 +128,9 @@ class _PetFormScreenState extends State<PetFormScreen> {
     );
 
     try {
-      final Pet saved = widget.isEditing ? await petRepo.update(pet) : await petRepo.create(pet);
+      final Pet saved = widget.isEditing
+          ? await petRepo.update(pet)
+          : await petRepo.create(pet);
 
       if (_hasPassport) {
         final number = _passportNumberCtrl.text.trim();
@@ -134,20 +138,24 @@ class _PetFormScreenState extends State<PetFormScreen> {
         if (_passportId != null) {
           final existing = await passportRepo.findById(_passportId!);
           if (existing != null) {
-            await passportRepo.update(existing.copyWith(
+            await passportRepo.update(
+              existing.copyWith(
+                petId: saved.id,
+                number: number,
+                microchip: microchip,
+              ),
+            );
+          }
+        } else {
+          await passportRepo.create(
+            PetPassport(
+              id: 0,
               petId: saved.id,
               number: number,
               microchip: microchip,
-            ));
-          }
-        } else {
-          await passportRepo.create(PetPassport(
-            id: 0,
-            petId: saved.id,
-            number: number,
-            microchip: microchip,
-            issuedAt: _passportIssuedAt,
-          ));
+              issuedAt: _passportIssuedAt,
+            ),
+          );
         }
       } else if (_passportId != null) {
         await passportRepo.softDelete(_passportId!);
@@ -156,22 +164,26 @@ class _PetFormScreenState extends State<PetFormScreen> {
     } on ValidationException catch (e) {
       if (mounted) {
         setState(() {
-          _chipUniqueError = e.fieldErrors['chipNumber'] ?? e.fieldErrors['isbn'];
+          _chipUniqueError =
+              e.fieldErrors['chipNumber'] ?? e.fieldErrors['isbn'];
           _passportUniqueError = e.fieldErrors['number'];
         });
         if (e.fieldErrors.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.message)));
         }
       }
       return false;
     } on ConflictException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
       return false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
       }
       return false;
     } finally {
@@ -216,7 +228,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
           errorText: _chipUniqueError,
           validator: Validators.chipNumber,
           onTextChanged: (_) {
-            if (_chipUniqueError != null) setState(() => _chipUniqueError = null);
+            if (_chipUniqueError != null) {
+              setState(() => _chipUniqueError = null); }
           },
         ),
         AppFieldSpec.dropdown(
@@ -253,15 +266,19 @@ class _PetFormScreenState extends State<PetFormScreen> {
           label: 'Филиал *',
           value: _clinicId,
           items: _clinics
-              .map((c) => DropdownMenuItem<dynamic>(
-                    value: c.id,
-                    child: Text(c.name, overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (c) => DropdownMenuItem<dynamic>(
+                  value: c.id,
+                  child: Text(c.name, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: (v) {
             setState(() {
               _clinicId = v as int?;
-              _serviceIds = _serviceIds.where((id) => _clinicServices.any((s) => s.id == id)).toList();
+              _serviceIds = _serviceIds
+                  .where((id) => _clinicServices.any((s) => s.id == id))
+                  .toList();
             });
           },
           dropdownValidator: (v) => v == null ? 'Выберите филиал' : null,
@@ -269,21 +286,30 @@ class _PetFormScreenState extends State<PetFormScreen> {
         ),
         AppFieldSpec.multiSelect(
           label: 'Владельцы *',
-          options: _owners.map((o) => SelectOption(id: o.id, label: o.fullName)).toList(),
+          options: _owners
+              .map((o) => SelectOption(id: o.id, label: o.fullName))
+              .toList(),
           selectedIds: _ownerIds,
           onMultiChanged: (ids) => setState(() => _ownerIds = ids),
-          multiValidator: (value) =>
-              (value == null || value.isEmpty) ? 'Выберите хотя бы одного владельца' : null,
+          multiValidator: (value) => (value == null || value.isEmpty)
+              ? 'Выберите хотя бы одного владельца'
+              : null,
         ),
         AppFieldSpec.multiSelect(
           label: 'Услуги *',
           options: _clinicServices
-              .map((s) => SelectOption(id: s.id, label: '${s.name} (${s.price.toStringAsFixed(0)} ₽)'))
+              .map(
+                (s) => SelectOption(
+                  id: s.id,
+                  label: '${s.name} (${s.price.toStringAsFixed(0)} ₽)',
+                ),
+              )
               .toList(),
           selectedIds: _serviceIds,
           onMultiChanged: (ids) => setState(() => _serviceIds = ids),
-          multiValidator: (value) =>
-              (value == null || value.isEmpty) ? 'Выберите хотя бы одну услугу' : null,
+          multiValidator: (value) => (value == null || value.isEmpty)
+              ? 'Выберите хотя бы одну услугу'
+              : null,
           helperText: _clinicId == null ? 'Сначала выберите филиал' : null,
         ),
         AppFieldSpec.text(
@@ -310,14 +336,16 @@ class _PetFormScreenState extends State<PetFormScreen> {
                 ]);
               },
               onTextChanged: (_) {
-                if (_passportUniqueError != null) setState(() => _passportUniqueError = null);
+                if (_passportUniqueError != null) {
+                  setState(() => _passportUniqueError = null); }
               },
             ),
             AppFieldSpec.text(
               label: 'Микрочип',
               controller: _microchipCtrl,
               validator: (v) {
-                if (!_hasPassport || (v == null || v.trim().isEmpty)) return null;
+                if (!_hasPassport || (v == null || v.trim().isEmpty)) {
+                  return null; }
                 return Validators.maxLength(v, 20, field: 'Микрочип');
               },
             ),

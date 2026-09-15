@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
 import '../repositories/pet_repository.dart';
@@ -59,7 +60,9 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     for (final p in await passportRepo.findAllActive()) {
       if (p.id != widget.id) taken.add(p.petId);
     }
-    _pets = allPets.where((pet) => !taken.contains(pet.id) || pet.id == _petId).toList();
+    _pets = allPets
+        .where((pet) => !taken.contains(pet.id) || pet.id == _petId)
+        .toList();
 
     if (mounted) setState(() => _loading = false);
   }
@@ -74,7 +77,10 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     if (parsedDate != null) _issuedAt = parsedDate;
 
     final repo = context.read<PetPassportRepository>();
-    final unique = await repo.isNumberUnique(_numberCtrl.text.trim(), excludeId: widget.id);
+    final unique = await repo.isNumberUnique(
+      _numberCtrl.text.trim(),
+      excludeId: widget.id,
+    );
     if (!unique) {
       setState(() => _numberUniqueError = 'Номер паспорта уже используется');
       return false;
@@ -101,7 +107,9 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
       }
       return true;
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e'))); }
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -130,13 +138,20 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
           label: 'Питомец *',
           value: _petId,
           items: _pets
-              .map((p) => DropdownMenuItem<dynamic>(
-                    value: p.id,
-                    child: Text('${p.name} (${p.chipNumber})', overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (p) => DropdownMenuItem<dynamic>(
+                  value: p.id,
+                  child: Text(
+                    '${p.name} (${p.chipNumber})',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
               .toList(),
           onChanged: (v) => setState(() => _petId = v as int?),
-          dropdownValidator: (v) => v == null ? (_petUniqueError ?? 'Выберите питомца') : _petUniqueError,
+          dropdownValidator: (v) => v == null
+              ? (_petUniqueError ?? 'Выберите питомца')
+              : _petUniqueError,
         ),
         AppFieldSpec.text(
           label: 'Номер паспорта *',

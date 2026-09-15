@@ -30,12 +30,12 @@ void main() {
 
   group('AppUser role and operation availability', () {
     AppUser user(Role role) => AppUser(
-          id: 1,
-          username: 'u',
-          fullName: 'User',
-          email: 'u@zoo.local',
-          role: role,
-        );
+      id: 1,
+      username: 'u',
+      fullName: 'User',
+      email: 'u@zoo.local',
+      role: role,
+    );
 
     bool canManageEntities(AppUser u) => u.role.atLeast(Role.staff);
     bool canManageUsers(AppUser u) => u.role.atLeast(Role.admin);

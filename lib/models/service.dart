@@ -38,11 +38,11 @@ class Service {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'description': description,
-        'price': price,
-        'clinicId': clinicId,
-      };
+    'name': name,
+    'description': description,
+    'price': price,
+    'clinicId': clinicId,
+  };
 
   factory Service.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);

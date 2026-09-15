@@ -56,16 +56,16 @@ class _VisitsScreenState extends State<VisitsScreen> {
       final dio = context.read<Dio>();
       await dio.post('/visits/$id/extend', data: {'days': 3});
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Срок продлён на 3 дня')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Срок продлён на 3 дня')));
       _load();
     } catch (e) {
       try {
         mapDioError(e);
       } on AppException catch (ae) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ae.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(ae.message)));
       }
     }
   }
@@ -75,16 +75,16 @@ class _VisitsScreenState extends State<VisitsScreen> {
       final dio = context.read<Dio>();
       await dio.post('/visits/$id/return');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выписка оформлена')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Выписка оформлена')));
       _load();
     } catch (e) {
       try {
         mapDioError(e);
       } on AppException catch (ae) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ae.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(ae.message)));
       }
     }
   }
@@ -98,45 +98,49 @@ class _VisitsScreenState extends State<VisitsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Заселения / выдачи'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+        actions: [
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : _items.isEmpty
-                  ? const Center(child: Text('Нет активных заселений'))
-                  : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final v = _items[i];
-                        final pet = v['pet'] is Map ? v['pet'] as Map : {};
-                        final clinic = v['clinic'] is Map ? v['clinic'] as Map : {};
-                        final due = DateTime.tryParse('${v['dueAt']}');
-                        return ListTile(
-                          title: Text('${pet['name'] ?? 'Питомец'} → ${clinic['name'] ?? 'Филиал'}'),
-                          subtitle: Text(
-                            'До: ${due != null ? fmt.format(due.toLocal()) : '—'} · ${v['status']}',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (v['returnedAt'] == null)
-                                TextButton(
-                                  onPressed: () => _extend(v['id'] as int),
-                                  child: const Text('Продлить'),
-                                ),
-                              if (isStaff && v['returnedAt'] == null)
-                                TextButton(
-                                  onPressed: () => _returnVisit(v['id'] as int),
-                                  child: const Text('Выписать'),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+          ? Center(child: Text(_error!))
+          : _items.isEmpty
+          ? const Center(child: Text('Нет активных заселений'))
+          : ListView.separated(
+              itemCount: _items.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, i) {
+                final v = _items[i];
+                final pet = v['pet'] is Map ? v['pet'] as Map : {};
+                final clinic = v['clinic'] is Map ? v['clinic'] as Map : {};
+                final due = DateTime.tryParse('${v['dueAt']}');
+                return ListTile(
+                  title: Text(
+                    '${pet['name'] ?? 'Питомец'} → ${clinic['name'] ?? 'Филиал'}',
+                  ),
+                  subtitle: Text(
+                    'До: ${due != null ? fmt.format(due.toLocal()) : '—'} · ${v['status']}',
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (v['returnedAt'] == null)
+                        TextButton(
+                          onPressed: () => _extend(v['id'] as int),
+                          child: const Text('Продлить'),
+                        ),
+                      if (isStaff && v['returnedAt'] == null)
+                        TextButton(
+                          onPressed: () => _returnVisit(v['id'] as int),
+                          child: const Text('Выписать'),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }

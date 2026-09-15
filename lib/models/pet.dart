@@ -74,17 +74,17 @@ class Pet {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'species': species,
-        'breed': breed,
-        'chipNumber': chipNumber,
-        'ageMonths': ageMonths,
-        'weightKg': weightKg,
-        'clinicId': clinicId,
-        'ownerIds': ownerIds,
-        'serviceIds': serviceIds,
-        'notes': notes,
-      };
+    'name': name,
+    'species': species,
+    'breed': breed,
+    'chipNumber': chipNumber,
+    'ageMonths': ageMonths,
+    'weightKg': weightKg,
+    'clinicId': clinicId,
+    'ownerIds': ownerIds,
+    'serviceIds': serviceIds,
+    'notes': notes,
+  };
 
   factory Pet.fromJson(Map<String, dynamic>? json) {
     final map = JsonHelpers.asMap(json);
@@ -118,7 +118,8 @@ class Pet {
         for (final s in services) JsonHelpers.asInt(JsonHelpers.asMap(s)['id']),
       ];
       serviceNames = [
-        for (final s in services) JsonHelpers.asString(JsonHelpers.asMap(s)['name']),
+        for (final s in services)
+          JsonHelpers.asString(JsonHelpers.asMap(s)['name']),
       ];
     }
 
@@ -133,7 +134,9 @@ class Pet {
       clinicId: clinic.isNotEmpty
           ? JsonHelpers.asInt(clinic['id'])
           : JsonHelpers.asInt(map['clinicId']),
-      clinicName: clinic.isNotEmpty ? JsonHelpers.asString(clinic['name']) : null,
+      clinicName: clinic.isNotEmpty
+          ? JsonHelpers.asString(clinic['name'])
+          : null,
       ownerIds: ownerIds,
       ownerNames: ownerNames,
       serviceIds: serviceIds,

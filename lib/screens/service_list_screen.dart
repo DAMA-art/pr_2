@@ -48,8 +48,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         actions: [
           if (notifier.hasSelection)
             IconButton(
-              icon: const Icon(Icons.delete), 
-              onPressed: () => notifier.deleteSelected()
+              icon: const Icon(Icons.delete),
+              onPressed: () => notifier.deleteSelected(),
             ),
           if (context.watch<AuthNotifier>().has(Role.staff))
             IconButton(
@@ -73,7 +73,9 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   SearchField(
                     initialValue: notifier.query.search,
                     hintText: 'Поиск по названию или описанию...',
-                    onChanged: (v) => notifier.applyQuery(notifier.query.copyWith(search: v, page: 1)),
+                    onChanged: (v) => notifier.applyQuery(
+                      notifier.query.copyWith(search: v, page: 1),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -91,22 +93,30 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                             isDense: true,
                           ),
                           items: [
-                            const DropdownMenuItem(value: null, child: Text('Все')),
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Все'),
+                            ),
                             for (final c in _clinics)
                               DropdownMenuItem(
                                 value: c.id,
-                                child: Text(c.name, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  c.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                           ],
-                          onChanged: (v) =>
-                              notifier.applyQuery(notifier.query.copyWith(clinicId: v, page: 1)),
+                          onChanged: (v) => notifier.applyQuery(
+                            notifier.query.copyWith(clinicId: v, page: 1),
+                          ),
                         ),
                       ),
                       FilterChip(
                         label: const Text('Показать удалённые'),
                         selected: notifier.query.includeDeleted,
-                        onSelected: (v) =>
-                            notifier.applyQuery(notifier.query.copyWith(includeDeleted: v, page: 1)),
+                        onSelected: (v) => notifier.applyQuery(
+                          notifier.query.copyWith(includeDeleted: v, page: 1),
+                        ),
                       ),
                     ],
                   ),
@@ -120,8 +130,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             PaginationBar(
               result: notifier.result,
               currentSize: notifier.query.size,
-              onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
-              onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
+              onPageChanged: (p) =>
+                  notifier.applyQuery(notifier.query.copyWith(page: p)),
+              onSizeChanged: (s) => notifier.applyQuery(
+                notifier.query.copyWith(size: s, page: 1),
+              ),
             ),
         ],
       ),
@@ -140,7 +153,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             children: [
               Text(notifier.error ?? 'Ошибка', textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              FilledButton(onPressed: () => notifier.load(), child: const Text('Повторить')),
+              FilledButton(
+                onPressed: () => notifier.load(),
+                child: const Text('Повторить'),
+              ),
             ],
           ),
         );
@@ -148,65 +164,161 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         if (notifier.result.items.isEmpty) {
           return const Center(child: Text('Нет услуг'));
         }
-        return EntityTable<Service>(
-          items: notifier.result.items,
-          idOf: (s) => s.id,
-          selected: notifier.selected,
-          onToggleSelect: notifier.toggleSelection,
-          sortField: notifier.query.sortField,
-          sortAscending: notifier.query.sortAscending,
-          isDeleted: (s) => s.isDeleted,
-          onSort: (field) {
-            final q = notifier.query;
-            notifier.applyQuery(q.copyWith(
-              sortField: field,
-              sortAscending: field == q.sortField ? !q.sortAscending : true,
-            ));
-          },
-          columns: [
-            TableColumnSpec(label: 'Название', sortField: 'name', build: (s) => Text(s.name)),
-            TableColumnSpec(
-              label: 'Цена',
-              sortField: 'price',
-              numeric: true,
-              build: (s) => Text('${s.price.toStringAsFixed(0)} ₽'),
-            ),
-            TableColumnSpec(
-              label: 'Филиал',
-              sortField: 'clinicId',
-              build: (s) => Text(_clinicName(s.clinicId)),
-            ),
-          ],
-          actions: (s) => [
-            if (s.isDeleted)
-              IconButton(
-                icon: const Icon(Icons.restore, color: Colors.green),
-                onPressed: () => notifier.restore(s.id),
-              )
-            else ...[
-              IconButton(
-                icon: const Icon(Icons.visibility),
-                onPressed: () => context.go('/services/${s.id}'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () async {
-                  final ok = await context.push('/services/${s.id}/edit');
-                  if (ok == true) notifier.load();
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 600) {
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: notifier.result.items.length,
+                itemBuilder: (context, index) {
+                  final s = notifier.result.items[index];
+                  return Card(
+                    color: s.isDeleted
+                        ? Colors.red.withValues(alpha: 0.08)
+                        : null,
+                    child: ListTile(
+                      leading: Checkbox(
+                        value: notifier.selected.contains(s.id),
+                        onChanged: (_) => notifier.toggleSelection(s.id),
+                      ),
+                      title: Text(
+                        s.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          decoration: s.isDeleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${s.price.toStringAsFixed(0)} ₽ · ${_clinicName(s.clinicId)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: s.isDeleted
+                          ? IconButton(
+                              tooltip: 'Восстановить',
+                              icon: const Icon(
+                                Icons.restore,
+                                color: Colors.green,
+                              ),
+                              onPressed: () => notifier.restore(s.id),
+                            )
+                          : PopupMenuButton<String>(
+                              tooltip: 'Действия',
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'view',
+                                  child: Text('Открыть'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Изменить'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'del',
+                                  child: Text('Удалить'),
+                                ),
+                              ],
+                              onSelected: (v) async {
+                                if (v == 'view') {
+                                  context.go('/services/${s.id}'); }
+                                if (v == 'edit') {
+                                  final ok = await context.push(
+                                    '/services/${s.id}/edit',
+                                  );
+                                  if (ok == true) notifier.load();
+                                }
+                                if (!context.mounted) return;
+                                if (v == 'del') {
+                                  await _delete(context, notifier, s);
+                                }
+                              },
+                            ),
+                    ),
+                  );
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => _delete(context, notifier, s),
-              ),
-            ],
-          ],
+              );
+            }
+            return EntityTable<Service>(
+              items: notifier.result.items,
+              idOf: (s) => s.id,
+              selected: notifier.selected,
+              onToggleSelect: notifier.toggleSelection,
+              sortField: notifier.query.sortField,
+              sortAscending: notifier.query.sortAscending,
+              isDeleted: (s) => s.isDeleted,
+              onSort: (field) {
+                final q = notifier.query;
+                notifier.applyQuery(
+                  q.copyWith(
+                    sortField: field,
+                    sortAscending: field == q.sortField
+                        ? !q.sortAscending
+                        : true,
+                  ),
+                );
+              },
+              columns: [
+                TableColumnSpec(
+                  label: 'Название',
+                  sortField: 'name',
+                  build: (s) => Text(s.name),
+                ),
+                TableColumnSpec(
+                  label: 'Цена',
+                  sortField: 'price',
+                  numeric: true,
+                  build: (s) => Text('${s.price.toStringAsFixed(0)} ₽'),
+                ),
+                TableColumnSpec(
+                  label: 'Филиал',
+                  sortField: 'clinicId',
+                  build: (s) => Text(_clinicName(s.clinicId)),
+                ),
+              ],
+              actions: (s) => [
+                if (s.isDeleted)
+                  IconButton(
+                    icon: const Icon(Icons.restore, color: Colors.green),
+                    onPressed: () => notifier.restore(s.id),
+                  )
+                else ...[
+                  IconButton(
+                    icon: const Icon(Icons.visibility),
+                    onPressed: () => context.go('/services/${s.id}'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () async {
+                      final ok = await context.push('/services/${s.id}/edit');
+                      if (ok == true) notifier.load();
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _delete(context, notifier, s),
+                  ),
+                ],
+              ],
+            );
+          },
         );
     }
   }
 
-  Future<void> _delete(BuildContext context, ServiceListNotifier notifier, Service s) async {
-    final hard = await confirmDeleteMode(context, title: 'Удаление услуги', body: 'Удалить «${s.name}»?');
+  Future<void> _delete(
+    BuildContext context,
+    ServiceListNotifier notifier,
+    Service s,
+  ) async {
+    final hard = await confirmDeleteMode(
+      context,
+      title: 'Удаление услуги',
+      body: 'Удалить «${s.name}»?',
+    );
     if (hard == null) return;
     if (hard) {
       await notifier.hardDelete(s.id);

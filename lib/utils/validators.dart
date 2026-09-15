@@ -62,7 +62,12 @@ class Validators {
     return null;
   }
 
-  static String? rangeInt(String? value, int min, int max, {String field = 'Значение'}) {
+  static String? rangeInt(
+    String? value,
+    int min,
+    int max, {
+    String field = 'Значение',
+  }) {
     if (value == null || value.trim().isEmpty) return '$field обязательно';
     final n = int.tryParse(value);
     if (n == null) return '$field должно быть числом';

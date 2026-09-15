@@ -51,16 +51,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
     try {
       await context.read<AuthNotifier>().register(
-            username: _username.text.trim(),
-            password: _password.text,
-            fullName: _fullName.text.trim(),
-            email: _email.text.trim(),
-          );
+        username: _username.text.trim(),
+        password: _password.text,
+        fullName: _fullName.text.trim(),
+        email: _email.text.trim(),
+      );
       if (!mounted) return;
       context.go('/pets');
     } on ValidationException catch (e) {
-      setState(() =>
-          _error = e.message + (e.fieldErrors.isNotEmpty ? ': ${e.fieldErrors.values.join(', ')}' : ''));
+      setState(
+        () => _error =
+            e.message +
+            (e.fieldErrors.isNotEmpty
+                ? ': ${e.fieldErrors.values.join(', ')}'
+                : ''),
+      );
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
@@ -73,10 +78,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _rule(bool ok, String text) {
     return Row(
       children: [
-        Icon(ok ? Icons.check_circle : Icons.radio_button_unchecked,
-            size: 18, color: ok ? Colors.green : Colors.grey),
+        Icon(
+          ok ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 18,
+          color: ok ? Colors.green : Colors.grey,
+        ),
         const SizedBox(width: 8),
-        Text(text, style: TextStyle(color: ok ? Colors.green : Colors.grey[700])),
+        Text(
+          text,
+          style: TextStyle(color: ok ? Colors.green : Colors.grey[700]),
+        ),
       ],
     );
   }
@@ -116,7 +127,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Обязательное поле';
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Обязательное поле'; }
                         if (v.trim().length < 3) return 'Не менее 3 символов';
                         return null;
                       },
@@ -128,8 +140,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         labelText: 'ФИО *',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Обязательное поле' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Обязательное поле'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -148,7 +161,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         labelText: 'Пароль *',
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(
+                            _obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -165,7 +180,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),

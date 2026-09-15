@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/clinic.dart';
@@ -39,7 +41,10 @@ class PersistentClinicRepository implements ClinicRepository {
   int _maxId() => _items.map((e) => e.id).fold(0, (a, b) => a > b ? a : b);
 
   Future<void> _persist() async {
-    await _prefs.setString(_key, jsonEncode(_items.map((e) => e.toJson()).toList()));
+    await _prefs.setString(
+      _key,
+      jsonEncode(_items.map((e) => e.toJson()).toList()),
+    );
   }
 
   @override
@@ -49,10 +54,12 @@ class PersistentClinicRepository implements ClinicRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.name.toLowerCase().contains(needle) ||
-              b.address.toLowerCase().contains(needle) ||
-              b.city.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.name.toLowerCase().contains(needle) ||
+                b.address.toLowerCase().contains(needle) ||
+                b.city.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.city != null && q.city!.isNotEmpty) {
@@ -150,15 +157,21 @@ class PersistentClinicRepository implements ClinicRepository {
 
   @override
   Future<bool> isNameUnique(String name, {int? excludeId}) async {
-    return !_items.any((p) =>
-        !p.isDeleted &&
-        p.name.toLowerCase() == name.trim().toLowerCase() &&
-        p.id != excludeId);
+    return !_items.any(
+      (p) =>
+          !p.isDeleted &&
+          p.name.toLowerCase() == name.trim().toLowerCase() &&
+          p.id != excludeId,
+    );
   }
 
   @override
   Future<List<String>> distinctCities() async {
-    final cities = _items.where((c) => !c.isDeleted).map((c) => c.city).toSet().toList();
+    final cities = _items
+        .where((c) => !c.isDeleted)
+        .map((c) => c.city)
+        .toSet()
+        .toList();
     cities.sort();
     return cities;
   }

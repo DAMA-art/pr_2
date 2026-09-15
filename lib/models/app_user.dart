@@ -26,10 +26,10 @@ class AppUser {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'username': username,
-        'fullName': fullName,
-        'email': email,
-        'role': role.code,
-      };
+    'id': id,
+    'username': username,
+    'fullName': fullName,
+    'email': email,
+    'role': role.code,
+  };
 }

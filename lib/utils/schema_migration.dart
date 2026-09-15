@@ -31,7 +31,11 @@ class SchemaMigration {
     return 'Формат данных обновлён';
   }
 
-  static Future<void> _copyIfPresent(SharedPreferences prefs, String from, String to) async {
+  static Future<void> _copyIfPresent(
+    SharedPreferences prefs,
+    String from,
+    String to,
+  ) async {
     final raw = prefs.getString(from);
     if (raw == null) return;
     if (!prefs.containsKey(to)) {

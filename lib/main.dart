@@ -53,11 +53,13 @@ import 'state/passport_list_notifier.dart';
 import 'state/pet_list_notifier.dart';
 import 'state/service_list_notifier.dart';
 import 'widgets/inactivity_watcher.dart';
+import 'widgets/responsive_scaffold.dart';
+import 'widgets/connectivity_banner.dart';
 
 final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 const _maxSessionDuration = Duration(hours: 8);
-const _inactivityTimeout = Duration(minutes: 3);
+const _inactivityTimeout = Duration(seconds: 40); //seconds: 40, minutes: 3
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,16 +87,36 @@ Future<void> main() async {
         Provider<AuthApi>.value(value: authApi),
         ChangeNotifierProvider<AuthNotifier>.value(value: auth),
         Provider<PetRepository>(create: (_) => ApiPetRepository(dio)),
-        Provider<OwnerRepository>(create: (_) => ApiOwnerRepository(dio, cache)),
-        Provider<ServiceRepository>(create: (_) => ApiServiceRepository(dio, cache)),
-        Provider<ClinicRepository>(create: (_) => ApiClinicRepository(dio, cache)),
-        Provider<PetPassportRepository>(create: (_) => ApiPetPassportRepository(dio)),
+        Provider<OwnerRepository>(
+          create: (_) => ApiOwnerRepository(dio, cache),
+        ),
+        Provider<ServiceRepository>(
+          create: (_) => ApiServiceRepository(dio, cache),
+        ),
+        Provider<ClinicRepository>(
+          create: (_) => ApiClinicRepository(dio, cache),
+        ),
+        Provider<PetPassportRepository>(
+          create: (_) => ApiPetPassportRepository(dio),
+        ),
         Provider(create: (_) => VisitRepository(dio)),
-        ChangeNotifierProvider(create: (c) => PetListNotifier(c.read<PetRepository>())..load()),
-        ChangeNotifierProvider(create: (c) => OwnerListNotifier(c.read<OwnerRepository>())..load()),
-        ChangeNotifierProvider(create: (c) => ServiceListNotifier(c.read<ServiceRepository>())..load()),
-        ChangeNotifierProvider(create: (c) => ClinicListNotifier(c.read<ClinicRepository>())..load()),
-        ChangeNotifierProvider(create: (c) => PassportListNotifier(c.read<PetPassportRepository>())..load()),
+        ChangeNotifierProvider(
+          create: (c) => PetListNotifier(c.read<PetRepository>())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (c) => OwnerListNotifier(c.read<OwnerRepository>())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (c) =>
+              ServiceListNotifier(c.read<ServiceRepository>())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (c) => ClinicListNotifier(c.read<ClinicRepository>())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (c) =>
+              PassportListNotifier(c.read<PetPassportRepository>())..load(),
+        ),
       ],
       child: ZooSalonApp(auth: auth),
     ),
@@ -124,7 +146,9 @@ class _ZooSalonAppState extends State<ZooSalonApp> {
     final started = widget.auth.sessionStartedAt;
     if (widget.auth.isAuthenticated && started != null) {
       if (DateTime.now().difference(started) > _maxSessionDuration) {
-        _forceLogout('Сессия истекла по времени (макс. ${_maxSessionDuration.inHours} ч).');
+        _forceLogout(
+          'Сессия истекла по времени (макс. ${_maxSessionDuration.inHours} ч).',
+        );
       }
     }
   }
@@ -167,7 +191,9 @@ class _ZooSalonAppState extends State<ZooSalonApp> {
           onWarning: () {
             _messengerKey.currentState?.showSnackBar(
               const SnackBar(
-                content: Text('Сессия завершится через 30 секунд из‑за неактивности'),
+                content: Text(
+                  'Сессия завершится через 30 секунд из‑за неактивности',
+                ),
                 duration: Duration(seconds: 25),
               ),
             );
@@ -200,79 +226,15 @@ GoRouter _buildRouter(AuthNotifier auth) {
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      GoRoute(path: '/forbidden', builder: (_, __) => const ForbiddenScreen()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(path: '/forbidden', builder: (_, _) => const ForbiddenScreen()),
       ShellRoute(
         builder: (context, state, child) {
-          final auth = context.watch<AuthNotifier>();
-          final path = state.uri.path;
-          final isStaff = auth.has(Role.staff);
-
-          final paths = <String>['/pets', '/services', '/clinics', '/visits'];
-          if (isStaff) {
-            paths.insert(1, '/owners');
-            paths.insert(4, '/passports');
-          }
-          int selected = 0;
-          for (var i = 0; i < paths.length; i++) {
-            if (path.startsWith(paths[i])) selected = i;
-          }
-
-          final destinations = <NavigationDestination>[
-            const NavigationDestination(icon: Icon(Icons.pets), label: 'Питомцы'),
-            if (isStaff)
-              const NavigationDestination(icon: Icon(Icons.people), label: 'Владельцы'),
-            const NavigationDestination(icon: Icon(Icons.medical_services), label: 'Услуги'),
-            const NavigationDestination(icon: Icon(Icons.local_hospital), label: 'Филиалы'),
-            if (isStaff)
-              const NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Паспорта'),
-            const NavigationDestination(icon: Icon(Icons.hotel), label: 'Заселения'),
-          ];
-
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Зоосалон'),
-              actions: [
-                if (auth.has(Role.admin)) ...[
-                  IconButton(
-                    tooltip: 'Статистика',
-                    onPressed: () => context.go('/admin/stats'),
-                    icon: const Icon(Icons.bar_chart),
-                  ),
-                  IconButton(
-                    tooltip: 'Пользователи',
-                    onPressed: () => context.go('/admin/users'),
-                    icon: const Icon(Icons.manage_accounts),
-                  ),
-                ],
-                if (auth.user != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Center(
-                      child: Text(
-                        '${auth.user!.fullName} (${auth.user!.role.title})',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                  ),
-                IconButton(
-                  tooltip: 'Выйти',
-                  onPressed: () async {
-                    await auth.logout();
-                    if (context.mounted) context.go('/login');
-                  },
-                  icon: const Icon(Icons.logout),
-                ),
-              ],
-            ),
-            body: child,
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: selected.clamp(0, destinations.length - 1),
-              onDestinationSelected: (i) {
-                if (i >= 0 && i < paths.length) context.go(paths[i]);
-              },
-              destinations: destinations,
+          return ConnectivityBanner(
+            child: ResponsiveScaffold(
+              currentPath: state.uri.path,
+              child: child,
             ),
           );
         },
@@ -290,9 +252,10 @@ GoRouter _buildRouter(AuthNotifier auth) {
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) =>
-                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
-                builder: (_, __) => const PetFormScreen(),
+                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                    ? null
+                    : '/forbidden',
+                builder: (_, _) => const PetFormScreen(),
               ),
               GoRoute(
                 path: ':id',
@@ -303,10 +266,12 @@ GoRouter _buildRouter(AuthNotifier auth) {
                 routes: [
                   GoRoute(
                     path: 'edit',
-                    redirect: (c, s) =>
-                        c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
+                    redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                        ? null
+                        : '/forbidden',
                     builder: (c, s) {
-                      final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
                       return PetFormScreen(id: id);
                     },
                   ),
@@ -327,7 +292,7 @@ GoRouter _buildRouter(AuthNotifier auth) {
               return const OwnerListScreen();
             },
             routes: [
-              GoRoute(path: 'new', builder: (_, __) => const OwnerFormScreen()),
+              GoRoute(path: 'new', builder: (_, _) => const OwnerFormScreen()),
               GoRoute(
                 path: ':id',
                 builder: (c, s) {
@@ -338,7 +303,8 @@ GoRouter _buildRouter(AuthNotifier auth) {
                   GoRoute(
                     path: 'edit',
                     builder: (c, s) {
-                      final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
                       return OwnerFormScreen(id: id);
                     },
                   ),
@@ -359,9 +325,10 @@ GoRouter _buildRouter(AuthNotifier auth) {
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) =>
-                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
-                builder: (_, __) => const ServiceFormScreen(),
+                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                    ? null
+                    : '/forbidden',
+                builder: (_, _) => const ServiceFormScreen(),
               ),
               GoRoute(
                 path: ':id',
@@ -372,10 +339,12 @@ GoRouter _buildRouter(AuthNotifier auth) {
                 routes: [
                   GoRoute(
                     path: 'edit',
-                    redirect: (c, s) =>
-                        c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
+                    redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                        ? null
+                        : '/forbidden',
                     builder: (c, s) {
-                      final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
                       return ServiceFormScreen(id: id);
                     },
                   ),
@@ -396,9 +365,10 @@ GoRouter _buildRouter(AuthNotifier auth) {
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) =>
-                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
-                builder: (_, __) => const ClinicFormScreen(),
+                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                    ? null
+                    : '/forbidden',
+                builder: (_, _) => const ClinicFormScreen(),
               ),
               GoRoute(
                 path: ':id',
@@ -409,10 +379,12 @@ GoRouter _buildRouter(AuthNotifier auth) {
                 routes: [
                   GoRoute(
                     path: 'edit',
-                    redirect: (c, s) =>
-                        c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
+                    redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
+                        ? null
+                        : '/forbidden',
                     builder: (c, s) {
-                      final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
                       return ClinicFormScreen(id: id);
                     },
                   ),
@@ -433,7 +405,10 @@ GoRouter _buildRouter(AuthNotifier auth) {
               return const PassportListScreen();
             },
             routes: [
-              GoRoute(path: 'new', builder: (_, __) => const PassportFormScreen()),
+              GoRoute(
+                path: 'new',
+                builder: (_, _) => const PassportFormScreen(),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (c, s) {
@@ -444,7 +419,8 @@ GoRouter _buildRouter(AuthNotifier auth) {
                   GoRoute(
                     path: 'edit',
                     builder: (c, s) {
-                      final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
                       return PassportFormScreen(id: id);
                     },
                   ),
@@ -452,18 +428,18 @@ GoRouter _buildRouter(AuthNotifier auth) {
               ),
             ],
           ),
-          GoRoute(path: '/visits', builder: (_, __) => const VisitsScreen()),
+          GoRoute(path: '/visits', builder: (_, _) => const VisitsScreen()),
           GoRoute(
             path: '/admin/users',
             redirect: (c, s) =>
                 c.read<AuthNotifier>().has(Role.admin) ? null : '/forbidden',
-            builder: (_, __) => const UsersScreen(),
+            builder: (_, _) => const UsersScreen(),
           ),
           GoRoute(
             path: '/admin/stats',
             redirect: (c, s) =>
                 c.read<AuthNotifier>().has(Role.admin) ? null : '/forbidden',
-            builder: (_, __) => const StatsScreen(),
+            builder: (_, _) => const StatsScreen(),
           ),
         ],
       ),

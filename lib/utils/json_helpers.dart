@@ -34,9 +34,7 @@ class JsonHelpers {
 
   static List<int> asIntList(dynamic value) {
     if (value is! List) return const [];
-    return [
-      for (final item in value) asInt(item),
-    ];
+    return [for (final item in value) asInt(item)];
   }
 
   static Map<String, dynamic> asMap(dynamic value) {

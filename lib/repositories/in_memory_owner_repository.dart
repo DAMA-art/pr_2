@@ -17,11 +17,13 @@ class InMemoryOwnerRepository implements OwnerRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.lastName.toLowerCase().contains(needle) ||
-              b.firstName.toLowerCase().contains(needle) ||
-              b.phone.contains(needle) ||
-              b.country.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.lastName.toLowerCase().contains(needle) ||
+                b.firstName.toLowerCase().contains(needle) ||
+                b.phone.contains(needle) ||
+                b.country.toLowerCase().contains(needle),
+          )
           .toList();
     }
 
@@ -34,7 +36,9 @@ class InMemoryOwnerRepository implements OwnerRepository {
 
     rows.sort((a, b) {
       final result = switch (q.sortField) {
-        'firstName' => a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase()),
+        'firstName' => a.firstName.toLowerCase().compareTo(
+          b.firstName.toLowerCase(),
+        ),
         'city' => a.city.toLowerCase().compareTo(b.city.toLowerCase()),
         'country' => a.country.toLowerCase().compareTo(b.country.toLowerCase()),
         _ => a.lastName.toLowerCase().compareTo(b.lastName.toLowerCase()),
@@ -122,15 +126,21 @@ class InMemoryOwnerRepository implements OwnerRepository {
 
   @override
   Future<bool> isEmailUnique(String email, {int? excludeId}) async {
-    return !_owners.any((o) =>
-        !o.isDeleted &&
-        o.email.toLowerCase() == email.toLowerCase() &&
-        o.id != excludeId);
+    return !_owners.any(
+      (o) =>
+          !o.isDeleted &&
+          o.email.toLowerCase() == email.toLowerCase() &&
+          o.id != excludeId,
+    );
   }
 
   @override
   Future<List<String>> distinctCities() async {
-    final cities = _owners.where((o) => !o.isDeleted).map((o) => o.city).toSet().toList();
+    final cities = _owners
+        .where((o) => !o.isDeleted)
+        .map((o) => o.city)
+        .toSet()
+        .toList();
     cities.sort();
     return cities;
   }

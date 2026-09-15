@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/pet_passport.dart';
@@ -27,7 +29,9 @@ class PersistentPetPassportRepository implements PetPassportRepository {
     }
     try {
       final list = jsonDecode(raw) as List;
-      _items = list.map((e) => PetPassport.fromJson(JsonHelpers.asMap(e))).toList();
+      _items = list
+          .map((e) => PetPassport.fromJson(JsonHelpers.asMap(e)))
+          .toList();
       _nextId = _maxId() + 1;
     } catch (_) {
       _items = [...seedPetPassports];
@@ -39,7 +43,10 @@ class PersistentPetPassportRepository implements PetPassportRepository {
   int _maxId() => _items.map((e) => e.id).fold(0, (a, b) => a > b ? a : b);
 
   Future<void> _persist() async {
-    await _prefs.setString(_key, jsonEncode(_items.map((e) => e.toJson()).toList()));
+    await _prefs.setString(
+      _key,
+      jsonEncode(_items.map((e) => e.toJson()).toList()),
+    );
   }
 
   @override
@@ -49,9 +56,11 @@ class PersistentPetPassportRepository implements PetPassportRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.number.toLowerCase().contains(needle) ||
-              b.microchip.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.number.toLowerCase().contains(needle) ||
+                b.microchip.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.petId != null) {
@@ -60,7 +69,9 @@ class PersistentPetPassportRepository implements PetPassportRepository {
     rows.sort((a, b) {
       final result = switch (q.sortField) {
         'issuedAt' => a.issuedAt.compareTo(b.issuedAt),
-        'microchip' => a.microchip.toLowerCase().compareTo(b.microchip.toLowerCase()),
+        'microchip' => a.microchip.toLowerCase().compareTo(
+          b.microchip.toLowerCase(),
+        ),
         _ => a.number.toLowerCase().compareTo(b.number.toLowerCase()),
       };
       return q.sortAscending ? result : -result;
@@ -159,17 +170,16 @@ class PersistentPetPassportRepository implements PetPassportRepository {
   @override
   Future<bool> isNumberUnique(String number, {int? excludeId}) async {
     final needle = number.trim().toLowerCase();
-    return !_items.any((p) =>
-        !p.isDeleted &&
-        p.number.toLowerCase() == needle &&
-        p.id != excludeId);
+    return !_items.any(
+      (p) =>
+          !p.isDeleted && p.number.toLowerCase() == needle && p.id != excludeId,
+    );
   }
 
   @override
   Future<bool> isPetFree(int petId, {int? excludeId}) async {
-    return !_items.any((p) =>
-        !p.isDeleted &&
-        p.petId == petId &&
-        p.id != excludeId);
+    return !_items.any(
+      (p) => !p.isDeleted && p.petId == petId && p.id != excludeId,
+    );
   }
 }

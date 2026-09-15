@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/page_result.dart';
 
 class PaginationBar extends StatelessWidget {
@@ -24,7 +25,10 @@ class PaginationBar extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Text('Всего: ${result.total}', style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Всего: ${result.total}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(width: 16),
           IconButton(
             icon: const Icon(Icons.first_page),
@@ -33,18 +37,24 @@ class PaginationBar extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left),
-            onPressed: result.hasPrevious ? () => onPageChanged(result.page - 1) : null,
+            onPressed: result.hasPrevious
+                ? () => onPageChanged(result.page - 1)
+                : null,
             tooltip: 'Предыдущая',
           ),
           Text('Стр. ${result.page} из ${result.totalPages}'),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: result.hasNext ? () => onPageChanged(result.page + 1) : null,
+            onPressed: result.hasNext
+                ? () => onPageChanged(result.page + 1)
+                : null,
             tooltip: 'Следующая',
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
-            onPressed: result.hasNext ? () => onPageChanged(result.totalPages) : null,
+            onPressed: result.hasNext
+                ? () => onPageChanged(result.totalPages)
+                : null,
             tooltip: 'Последняя',
           ),
           const SizedBox(width: 16),

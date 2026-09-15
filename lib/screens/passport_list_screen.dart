@@ -51,7 +51,7 @@ class _PassportListScreenState extends State<PassportListScreen> {
           if (notifier.hasSelection)
             IconButton(
               icon: const Icon(Icons.delete),
-              onPressed: () => notifier.deleteSelected()
+              onPressed: () => notifier.deleteSelected(),
             ),
           if (context.watch<AuthNotifier>().has(Role.staff))
             IconButton(
@@ -75,7 +75,9 @@ class _PassportListScreenState extends State<PassportListScreen> {
                   SearchField(
                     initialValue: notifier.query.search,
                     hintText: 'Поиск по номеру или микрочипу...',
-                    onChanged: (v) => notifier.applyQuery(notifier.query.copyWith(search: v, page: 1)),
+                    onChanged: (v) => notifier.applyQuery(
+                      notifier.query.copyWith(search: v, page: 1),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -93,19 +95,27 @@ class _PassportListScreenState extends State<PassportListScreen> {
                             isDense: true,
                           ),
                           items: [
-                            const DropdownMenuItem(value: null, child: Text('Все')),
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Все'),
+                            ),
                             for (final p in _pets)
-                              DropdownMenuItem(value: p.id, child: Text(p.name)),
+                              DropdownMenuItem(
+                                value: p.id,
+                                child: Text(p.name),
+                              ),
                           ],
-                          onChanged: (v) =>
-                              notifier.applyQuery(notifier.query.copyWith(petId: v, page: 1)),
+                          onChanged: (v) => notifier.applyQuery(
+                            notifier.query.copyWith(petId: v, page: 1),
+                          ),
                         ),
                       ),
                       FilterChip(
                         label: const Text('Показать удалённые'),
                         selected: notifier.query.includeDeleted,
-                        onSelected: (v) =>
-                            notifier.applyQuery(notifier.query.copyWith(includeDeleted: v, page: 1)),
+                        onSelected: (v) => notifier.applyQuery(
+                          notifier.query.copyWith(includeDeleted: v, page: 1),
+                        ),
                       ),
                     ],
                   ),
@@ -119,15 +129,22 @@ class _PassportListScreenState extends State<PassportListScreen> {
             PaginationBar(
               result: notifier.result,
               currentSize: notifier.query.size,
-              onPageChanged: (p) => notifier.applyQuery(notifier.query.copyWith(page: p)),
-              onSizeChanged: (s) => notifier.applyQuery(notifier.query.copyWith(size: s, page: 1)),
+              onPageChanged: (p) =>
+                  notifier.applyQuery(notifier.query.copyWith(page: p)),
+              onSizeChanged: (s) => notifier.applyQuery(
+                notifier.query.copyWith(size: s, page: 1),
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context, PassportListNotifier notifier, DateFormat fmt) {
+  Widget _buildBody(
+    BuildContext context,
+    PassportListNotifier notifier,
+    DateFormat fmt,
+  ) {
     switch (notifier.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -139,7 +156,10 @@ class _PassportListScreenState extends State<PassportListScreen> {
             children: [
               Text(notifier.error ?? 'Ошибка', textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              FilledButton(onPressed: () => notifier.load(), child: const Text('Повторить')),
+              FilledButton(
+                onPressed: () => notifier.load(),
+                child: const Text('Повторить'),
+              ),
             ],
           ),
         );
@@ -147,61 +167,165 @@ class _PassportListScreenState extends State<PassportListScreen> {
         if (notifier.result.items.isEmpty) {
           return const Center(child: Text('Нет паспортов'));
         }
-        return EntityTable<PetPassport>(
-          items: notifier.result.items,
-          idOf: (p) => p.id,
-          selected: notifier.selected,
-          onToggleSelect: notifier.toggleSelection,
-          sortField: notifier.query.sortField,
-          sortAscending: notifier.query.sortAscending,
-          isDeleted: (p) => p.isDeleted,
-          onSort: (field) {
-            final q = notifier.query;
-            notifier.applyQuery(q.copyWith(
-              sortField: field,
-              sortAscending: field == q.sortField ? !q.sortAscending : true,
-            ));
-          },
-          columns: [
-            TableColumnSpec(label: 'Номер', sortField: 'number', build: (p) => Text(p.number)),
-            TableColumnSpec(label: 'Питомец', build: (p) => Text(_petName(p.petId))),
-            TableColumnSpec(label: 'Микрочип', sortField: 'microchip', build: (p) => Text(p.microchip)),
-            TableColumnSpec(
-              label: 'Выдан',
-              sortField: 'issuedAt',
-              build: (p) => Text(fmt.format(p.issuedAt)),
-            ),
-          ],
-          actions: (p) => [
-            if (p.isDeleted)
-              IconButton(
-                icon: const Icon(Icons.restore, color: Colors.green),
-                onPressed: () => notifier.restore(p.id),
-              )
-            else ...[
-              IconButton(
-                icon: const Icon(Icons.visibility),
-                onPressed: () => context.go('/passports/${p.id}'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () async {
-                  final ok = await context.push('/passports/${p.id}/edit');
-                  if (ok == true) notifier.load();
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 600) {
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: notifier.result.items.length,
+                itemBuilder: (context, index) {
+                  final p = notifier.result.items[index];
+                  return Card(
+                    color: p.isDeleted
+                        ? Colors.red.withValues(alpha: 0.08)
+                        : null,
+                    child: ListTile(
+                      leading: Checkbox(
+                        value: notifier.selected.contains(p.id),
+                        onChanged: (_) => notifier.toggleSelection(p.id),
+                      ),
+                      title: Text(
+                        p.number,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          decoration: p.isDeleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${_petName(p.petId)} · ${p.microchip}\n${fmt.format(p.issuedAt)}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      isThreeLine: true,
+                      trailing: p.isDeleted
+                          ? IconButton(
+                              tooltip: 'Восстановить',
+                              icon: const Icon(
+                                Icons.restore,
+                                color: Colors.green,
+                              ),
+                              onPressed: () => notifier.restore(p.id),
+                            )
+                          : PopupMenuButton<String>(
+                              tooltip: 'Действия',
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'view',
+                                  child: Text('Открыть'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Изменить'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'del',
+                                  child: Text('Удалить'),
+                                ),
+                              ],
+                              onSelected: (v) async {
+                                if (v == 'view') {
+                                  context.go('/passports/${p.id}'); }
+                                if (v == 'edit') {
+                                  final ok = await context.push(
+                                    '/passports/${p.id}/edit',
+                                  );
+                                  if (ok == true) notifier.load();
+                                }
+                                if (!context.mounted) return;
+                                if (v == 'del') {
+                                  await _delete(context, notifier, p);
+                                }
+                              },
+                            ),
+                    ),
+                  );
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => _delete(context, notifier, p),
-              ),
-            ],
-          ],
+              );
+            }
+            return EntityTable<PetPassport>(
+              items: notifier.result.items,
+              idOf: (p) => p.id,
+              selected: notifier.selected,
+              onToggleSelect: notifier.toggleSelection,
+              sortField: notifier.query.sortField,
+              sortAscending: notifier.query.sortAscending,
+              isDeleted: (p) => p.isDeleted,
+              onSort: (field) {
+                final q = notifier.query;
+                notifier.applyQuery(
+                  q.copyWith(
+                    sortField: field,
+                    sortAscending: field == q.sortField
+                        ? !q.sortAscending
+                        : true,
+                  ),
+                );
+              },
+              columns: [
+                TableColumnSpec(
+                  label: 'Номер',
+                  sortField: 'number',
+                  build: (p) => Text(p.number),
+                ),
+                TableColumnSpec(
+                  label: 'Питомец',
+                  build: (p) => Text(_petName(p.petId)),
+                ),
+                TableColumnSpec(
+                  label: 'Микрочип',
+                  sortField: 'microchip',
+                  build: (p) => Text(p.microchip),
+                ),
+                TableColumnSpec(
+                  label: 'Выдан',
+                  sortField: 'issuedAt',
+                  build: (p) => Text(fmt.format(p.issuedAt)),
+                ),
+              ],
+              actions: (p) => [
+                if (p.isDeleted)
+                  IconButton(
+                    icon: const Icon(Icons.restore, color: Colors.green),
+                    onPressed: () => notifier.restore(p.id),
+                  )
+                else ...[
+                  IconButton(
+                    icon: const Icon(Icons.visibility),
+                    onPressed: () => context.go('/passports/${p.id}'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () async {
+                      final ok = await context.push('/passports/${p.id}/edit');
+                      if (ok == true) notifier.load();
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _delete(context, notifier, p),
+                  ),
+                ],
+              ],
+            );
+          },
         );
     }
   }
 
-  Future<void> _delete(BuildContext context, PassportListNotifier notifier, PetPassport p) async {
-    final hard = await confirmDeleteMode(context, title: 'Удаление паспорта', body: 'Удалить «${p.number}»?');
+  Future<void> _delete(
+    BuildContext context,
+    PassportListNotifier notifier,
+    PetPassport p,
+  ) async {
+    final hard = await confirmDeleteMode(
+      context,
+      title: 'Удаление паспорта',
+      body: 'Удалить «${p.number}»?',
+    );
     if (hard == null) return;
     if (hard) {
       await notifier.hardDelete(p.id);

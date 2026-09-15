@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/service.dart';
 import '../models/clinic.dart';
 import '../repositories/service_repository.dart';
@@ -56,7 +57,10 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
     if (!_formKey.currentState!.validate()) return false;
 
     final repo = context.read<ServiceRepository>();
-    final unique = await repo.isNameUnique(_nameCtrl.text.trim(), excludeId: widget.id);
+    final unique = await repo.isNameUnique(
+      _nameCtrl.text.trim(),
+      excludeId: widget.id,
+    );
     if (!unique) {
       setState(() => _nameUniqueError = 'Услуга с таким названием уже есть');
       return false;
@@ -78,7 +82,9 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
       }
       return true;
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e'))); }
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -128,10 +134,12 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
           label: 'Филиал *',
           value: _clinicId,
           items: _clinics
-              .map((c) => DropdownMenuItem<dynamic>(
-                    value: c.id,
-                    child: Text(c.name, overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (c) => DropdownMenuItem<dynamic>(
+                  value: c.id,
+                  child: Text(c.name, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: (v) => setState(() => _clinicId = v as int?),
           dropdownValidator: (v) => v == null ? 'Выберите филиал' : null,

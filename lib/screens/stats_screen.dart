@@ -50,27 +50,29 @@ class _StatsScreenState extends State<StatsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Статистика'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+        actions: [
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _card('Питомцы', _stats?['pets']),
-                      _card('Владельцы', _stats?['owners']),
-                      _card('Филиалы', _stats?['clinics']),
-                      _card('Услуги', _stats?['services']),
-                      _card('Активные заселения', _stats?['visitsActive']),
-                      _card('Пользователи', _stats?['users']),
-                    ],
-                  ),
-                ),
+          ? Center(child: Text(_error!))
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _card('Питомцы', _stats?['pets']),
+                  _card('Владельцы', _stats?['owners']),
+                  _card('Филиалы', _stats?['clinics']),
+                  _card('Услуги', _stats?['services']),
+                  _card('Активные заселения', _stats?['visitsActive']),
+                  _card('Пользователи', _stats?['users']),
+                ],
+              ),
+            ),
     );
   }
 

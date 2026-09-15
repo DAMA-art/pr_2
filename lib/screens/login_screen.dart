@@ -33,9 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
     try {
       await context.read<AuthNotifier>().login(
-            _username.text.trim(),
-            _password.text,
-          );
+        _username.text.trim(),
+        _password.text,
+      );
       if (!mounted) return;
       final from = GoRouterState.of(context).uri.queryParameters['from'];
       if (from != null && from.isNotEmpty) {
@@ -88,8 +88,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: Icon(Icons.person),
                       ),
                       textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Введите логин' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Введите логин'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -100,7 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(
+                            _obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -112,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -128,7 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 12),
                     TextButton(
-                      onPressed: _loading ? null : () => context.go('/register'),
+                      onPressed: _loading
+                          ? null
+                          : () => context.go('/register'),
                       child: const Text('Регистрация'),
                     ),
                   ],

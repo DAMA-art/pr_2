@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../models/owner.dart';
 import '../repositories/owner_repository.dart';
 import '../repositories/pet_repository.dart';
@@ -54,7 +55,8 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       await showBlockedDelete(
         context,
         title: 'Невозможно удалить',
-        body: 'Владелец «${owner.fullName}» связан с $count питомцами.\n'
+        body:
+            'Владелец «${owner.fullName}» связан с $count питомцами.\n'
             'Сначала удалите или переназначьте питомцев.',
       );
       return;
@@ -65,8 +67,14 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
         title: const Text('Удалить?'),
         content: Text('Удалить владельца «${owner.fullName}»?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Да')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Нет'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Да'),
+          ),
         ],
       ),
     );
@@ -81,7 +89,10 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_owner?.fullName ?? 'Владелец'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/owners')),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/owners'),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -99,34 +110,43 @@ class _OwnerDetailScreenState extends State<OwnerDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : _owner == null
-                  ? const Center(child: Text('Не найден'))
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(_owner!.fullName, style: Theme.of(context).textTheme.headlineSmall),
-                              const SizedBox(height: 12),
-                              Text('Телефон: ${_owner!.phone}'),
-                              Text('Email: ${_owner!.email}'),
-                              Text('Город: ${_owner!.city}'),
-                              Text('Страна: ${_owner!.country}'),
-                              if (_owner!.isDeleted)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 12),
-                                  child: Text('УДАЛЁН', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                                ),
-                            ],
+          ? Center(child: Text(_error!))
+          : _owner == null
+          ? const Center(child: Text('Не найден'))
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _owner!.fullName,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 12),
+                      Text('Телефон: ${_owner!.phone}'),
+                      Text('Email: ${_owner!.email}'),
+                      Text('Город: ${_owner!.city}'),
+                      Text('Страна: ${_owner!.country}'),
+                      if (_owner!.isDeleted)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'УДАЛЁН',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/pet.dart';
@@ -27,9 +29,7 @@ class PersistentPetRepository implements PetRepository {
     }
     try {
       final list = jsonDecode(raw) as List;
-      _pets = list
-          .map((e) => Pet.fromJson(JsonHelpers.asMap(e)))
-          .toList();
+      _pets = list.map((e) => Pet.fromJson(JsonHelpers.asMap(e))).toList();
       _nextId = _maxId(_pets) + 1;
     } catch (_) {
       _pets = [...seedPets];
@@ -42,7 +42,10 @@ class PersistentPetRepository implements PetRepository {
       items.map((e) => e.id).fold(0, (a, b) => a > b ? a : b);
 
   Future<void> _persist() async {
-    await _prefs.setString(_key, jsonEncode(_pets.map((e) => e.toJson()).toList()));
+    await _prefs.setString(
+      _key,
+      jsonEncode(_pets.map((e) => e.toJson()).toList()),
+    );
   }
 
   @override
@@ -53,10 +56,12 @@ class PersistentPetRepository implements PetRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.name.toLowerCase().contains(needle) ||
-              b.breed.toLowerCase().contains(needle) ||
-              b.chipNumber.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.name.toLowerCase().contains(needle) ||
+                b.breed.toLowerCase().contains(needle) ||
+                b.chipNumber.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.species != null && q.species!.isNotEmpty) {
@@ -108,19 +113,19 @@ class PersistentPetRepository implements PetRepository {
   }
 
   Pet _copyWithId(Pet pet, int id) => Pet(
-        id: id,
-        name: pet.name,
-        species: pet.species,
-        breed: pet.breed,
-        chipNumber: pet.chipNumber,
-        ageMonths: pet.ageMonths,
-        weightKg: pet.weightKg,
-        clinicId: pet.clinicId,
-        ownerIds: List.from(pet.ownerIds),
-        serviceIds: List.from(pet.serviceIds),
-        notes: pet.notes,
-        deletedAt: pet.deletedAt,
-      );
+    id: id,
+    name: pet.name,
+    species: pet.species,
+    breed: pet.breed,
+    chipNumber: pet.chipNumber,
+    ageMonths: pet.ageMonths,
+    weightKg: pet.weightKg,
+    clinicId: pet.clinicId,
+    ownerIds: List.from(pet.ownerIds),
+    serviceIds: List.from(pet.serviceIds),
+    notes: pet.notes,
+    deletedAt: pet.deletedAt,
+  );
 
   @override
   Future<Pet> create(Pet pet) async {
@@ -180,15 +185,19 @@ class PersistentPetRepository implements PetRepository {
   @override
   Future<bool> isChipUnique(String chipNumber, {int? excludeId}) async {
     final needle = chipNumber.trim().toLowerCase();
-    return !_pets.any((p) =>
-        !p.isDeleted &&
-        p.chipNumber.toLowerCase() == needle &&
-        p.id != excludeId);
+    return !_pets.any(
+      (p) =>
+          !p.isDeleted &&
+          p.chipNumber.toLowerCase() == needle &&
+          p.id != excludeId,
+    );
   }
 
   @override
   Future<int> countByOwner(int ownerId) async {
-    return _pets.where((p) => !p.isDeleted && p.ownerIds.contains(ownerId)).length;
+    return _pets
+        .where((p) => !p.isDeleted && p.ownerIds.contains(ownerId))
+        .length;
   }
 
   @override

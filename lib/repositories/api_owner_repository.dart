@@ -24,7 +24,8 @@ class ApiOwnerRepository implements OwnerRepository {
         'size': query.size,
         'sort': '${query.sortField},${query.sortAscending ? 'asc' : 'desc'}',
       };
-      if (query.search.trim().isNotEmpty) params['search'] = query.search.trim();
+      if (query.search.trim().isNotEmpty){
+        params['search'] = query.search.trim();}
       if (query.city != null) params['city'] = query.city;
       if (query.country != null) params['country'] = query.country;
       if (query.includeDeleted) params['includeDeleted'] = true;
@@ -76,7 +77,10 @@ class ApiOwnerRepository implements OwnerRepository {
   @override
   Future<Owner> create(Owner owner) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>('/owners', data: owner.toJson());
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/owners',
+        data: owner.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Owner.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
@@ -87,7 +91,10 @@ class ApiOwnerRepository implements OwnerRepository {
   @override
   Future<Owner> update(Owner owner) async {
     try {
-      final res = await _dio.put<Map<String, dynamic>>('/owners/${owner.id}', data: owner.toJson());
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/owners/${owner.id}',
+        data: owner.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Owner.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
@@ -145,7 +152,9 @@ class ApiOwnerRepository implements OwnerRepository {
   @override
   Future<List<String>> distinctCities() async {
     final owners = await findAllActive();
-    final cities = owners.map((o) => o.city).where((c) => c.isNotEmpty).toSet().toList()..sort();
+    final cities =
+        owners.map((o) => o.city).where((c) => c.isNotEmpty).toSet().toList()
+          ..sort();
     return cities;
   }
 }

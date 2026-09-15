@@ -24,7 +24,8 @@ class ApiServiceRepository implements ServiceRepository {
         'size': query.size,
         'sort': '${query.sortField},${query.sortAscending ? 'asc' : 'desc'}',
       };
-      if (query.search.trim().isNotEmpty) params['search'] = query.search.trim();
+      if (query.search.trim().isNotEmpty){
+        params['search'] = query.search.trim();}
       if (query.clinicId != null) params['clinicId'] = query.clinicId;
       if (query.includeDeleted) params['includeDeleted'] = true;
 
@@ -51,7 +52,10 @@ class ApiServiceRepository implements ServiceRepository {
   @override
   Future<Service?> findById(int id) async {
     try {
-      final res = await getWithRetry<Map<String, dynamic>>(_dio, '/services/$id');
+      final res = await getWithRetry<Map<String, dynamic>>(
+        _dio,
+        '/services/$id',
+      );
       return Service.fromJson(JsonHelpers.asMap(res.data));
     } on Object catch (e) {
       try {
@@ -75,7 +79,10 @@ class ApiServiceRepository implements ServiceRepository {
   @override
   Future<Service> create(Service service) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>('/services', data: service.toJson());
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/services',
+        data: service.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Service.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {
@@ -86,8 +93,10 @@ class ApiServiceRepository implements ServiceRepository {
   @override
   Future<Service> update(Service service) async {
     try {
-      final res =
-          await _dio.put<Map<String, dynamic>>('/services/${service.id}', data: service.toJson());
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/services/${service.id}',
+        data: service.toJson(),
+      );
       cache.invalidate(_cacheKey);
       return Service.fromJson(JsonHelpers.asMap(res.data));
     } catch (e) {

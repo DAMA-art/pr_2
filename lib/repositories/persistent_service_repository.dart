@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/service.dart';
@@ -39,7 +41,10 @@ class PersistentServiceRepository implements ServiceRepository {
   int _maxId() => _items.map((e) => e.id).fold(0, (a, b) => a > b ? a : b);
 
   Future<void> _persist() async {
-    await _prefs.setString(_key, jsonEncode(_items.map((e) => e.toJson()).toList()));
+    await _prefs.setString(
+      _key,
+      jsonEncode(_items.map((e) => e.toJson()).toList()),
+    );
   }
 
   @override
@@ -49,9 +54,11 @@ class PersistentServiceRepository implements ServiceRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((b) =>
-              b.name.toLowerCase().contains(needle) ||
-              b.description.toLowerCase().contains(needle))
+          .where(
+            (b) =>
+                b.name.toLowerCase().contains(needle) ||
+                b.description.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.clinicId != null) {
@@ -149,10 +156,12 @@ class PersistentServiceRepository implements ServiceRepository {
 
   @override
   Future<bool> isNameUnique(String name, {int? excludeId}) async {
-    return !_items.any((p) =>
-        !p.isDeleted &&
-        p.name.toLowerCase() == name.trim().toLowerCase() &&
-        p.id != excludeId);
+    return !_items.any(
+      (p) =>
+          !p.isDeleted &&
+          p.name.toLowerCase() == name.trim().toLowerCase() &&
+          p.id != excludeId,
+    );
   }
 
   @override

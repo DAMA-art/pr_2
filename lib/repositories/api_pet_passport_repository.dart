@@ -21,7 +21,8 @@ class ApiPetPassportRepository implements PetPassportRepository {
         'size': query.size,
         'sort': '${query.sortField},${query.sortAscending ? 'asc' : 'desc'}',
       };
-      if (query.search.trim().isNotEmpty) params['search'] = query.search.trim();
+      if (query.search.trim().isNotEmpty){
+        params['search'] = query.search.trim();}
       if (query.petId != null) params['petId'] = query.petId;
       if (query.includeDeleted) params['includeDeleted'] = true;
 
@@ -48,7 +49,10 @@ class ApiPetPassportRepository implements PetPassportRepository {
   @override
   Future<PetPassport?> findById(int id) async {
     try {
-      final res = await getWithRetry<Map<String, dynamic>>(_dio, '/passports/$id');
+      final res = await getWithRetry<Map<String, dynamic>>(
+        _dio,
+        '/passports/$id',
+      );
       return PetPassport.fromJson(JsonHelpers.asMap(res.data));
     } on Object catch (e) {
       try {

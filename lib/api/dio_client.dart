@@ -181,12 +181,15 @@ Future<Response<T>> getWithRetry<T>(
       );
     } on DioException catch (e) {
       lastError = e;
-      final retryable = e.type == DioExceptionType.connectionError ||
+      final retryable =
+          e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout;
       if (!retryable || attempt == maxAttempts) rethrow;
-      await Future<void>.delayed(Duration(milliseconds: 300 * (1 << (attempt - 1))));
+      await Future<void>.delayed(
+        Duration(milliseconds: 300 * (1 << (attempt - 1))),
+      );
     }
   }
   throw lastError!;

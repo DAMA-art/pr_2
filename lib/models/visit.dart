@@ -34,11 +34,16 @@ class Visit {
     final clinic = JsonHelpers.asMap(map['clinic']);
     return Visit(
       id: JsonHelpers.asInt(map['id']),
-      petId: pet.isNotEmpty ? JsonHelpers.asInt(pet['id']) : JsonHelpers.asInt(map['petId']),
+      petId: pet.isNotEmpty
+          ? JsonHelpers.asInt(pet['id'])
+          : JsonHelpers.asInt(map['petId']),
       petName: pet.isNotEmpty ? JsonHelpers.asString(pet['name']) : null,
-      clinicId:
-          clinic.isNotEmpty ? JsonHelpers.asInt(clinic['id']) : JsonHelpers.asInt(map['clinicId']),
-      clinicName: clinic.isNotEmpty ? JsonHelpers.asString(clinic['name']) : null,
+      clinicId: clinic.isNotEmpty
+          ? JsonHelpers.asInt(clinic['id'])
+          : JsonHelpers.asInt(map['clinicId']),
+      clinicName: clinic.isNotEmpty
+          ? JsonHelpers.asString(clinic['name'])
+          : null,
       issuedAt: JsonHelpers.asDateTime(map['issuedAt']) ?? DateTime.now(),
       dueAt: JsonHelpers.asDateTime(map['dueAt']) ?? DateTime.now(),
       returnedAt: JsonHelpers.asDateTime(map['returnedAt']),

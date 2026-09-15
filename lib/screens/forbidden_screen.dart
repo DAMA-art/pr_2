@@ -18,9 +18,16 @@ class ForbiddenScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock_outline, size: 72, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.lock_outline,
+                size: 72,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(height: 16),
-              Text('Недостаточно прав', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'Недостаточно прав',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text(
                 user == null

@@ -138,7 +138,9 @@ void main() {
       _ScriptedAdapter((options) async {
         return _json(422, {
           'message': 'Ошибка валидации',
-          'errors': {'chipNumber': 'Питомец с таким номером чипа уже существует'},
+          'errors': {
+            'chipNumber': 'Питомец с таким номером чипа уже существует',
+          },
         });
       }),
     );
@@ -168,10 +170,7 @@ void main() {
     );
 
     final repo = ApiPetRepository(dio);
-    expect(
-      () => repo.create(_samplePet),
-      throwsA(isA<NetworkException>()),
-    );
+    expect(() => repo.create(_samplePet), throwsA(isA<NetworkException>()));
   });
 
   test('404 findById returns null', () async {

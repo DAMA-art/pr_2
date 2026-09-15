@@ -73,7 +73,9 @@ class OwnerListScreen extends StatelessWidget {
                     notifier.applyQuery(notifier.query.copyWith(page: page));
                   },
                   onSizeChanged: (size) {
-                    notifier.applyQuery(notifier.query.copyWith(size: size, page: 1));
+                    notifier.applyQuery(
+                      notifier.query.copyWith(size: size, page: 1),
+                    );
                   },
                 ),
             ],
@@ -148,7 +150,9 @@ class OwnerListScreen extends StatelessWidget {
                   build: (o) => Text(
                     o.lastName,
                     style: TextStyle(
-                      decoration: o.isDeleted ? TextDecoration.lineThrough : null,
+                      decoration: o.isDeleted
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                 ),
@@ -157,10 +161,7 @@ class OwnerListScreen extends StatelessWidget {
                   sortField: 'firstName',
                   build: (o) => Text(o.firstName),
                 ),
-                TableColumnSpec(
-                  label: 'Телефон',
-                  build: (o) => Text(o.phone),
-                ),
+                TableColumnSpec(label: 'Телефон', build: (o) => Text(o.phone)),
                 TableColumnSpec(
                   label: 'Город',
                   sortField: 'city',
@@ -209,7 +210,8 @@ class OwnerListScreen extends StatelessWidget {
       await showBlockedDelete(
         context,
         title: 'Невозможно удалить',
-        body: 'Владелец «${owner.fullName}» связан с $count питомцами. '
+        body:
+            'Владелец «${owner.fullName}» связан с $count питомцами. '
             'Сначала удалите или переназначьте питомцев.',
       );
       return;
@@ -237,7 +239,10 @@ class OwnerListScreen extends StatelessWidget {
         title: const Text('Удаление выбранных'),
         content: Text('Удалить логически ${notifier.selected.length} записей?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Удалить'),
@@ -308,13 +313,15 @@ class _FiltersPanel extends StatelessWidget {
                       DropdownMenuItem(value: null, child: Text('Все')),
                       DropdownMenuItem(value: 'Россия', child: Text('Россия')),
                     ],
-                    onChanged: (v) => notifier.applyQuery(q.copyWith(country: v)),
+                    onChanged: (v) =>
+                        notifier.applyQuery(q.copyWith(country: v)),
                   ),
                 ),
                 FilterChip(
                   label: const Text('Показать удалённые'),
                   selected: q.includeDeleted,
-                  onSelected: (v) => notifier.applyQuery(q.copyWith(includeDeleted: v)),
+                  onSelected: (v) =>
+                      notifier.applyQuery(q.copyWith(includeDeleted: v)),
                 ),
               ],
             ),
@@ -360,9 +367,18 @@ class _OwnerCardsList extends StatelessWidget {
                   )
                 : PopupMenuButton(
                     itemBuilder: (ctx) => [
-                      const PopupMenuItem(value: 'view', child: Text('Карточка')),
-                      const PopupMenuItem(value: 'soft', child: Text('Удалить логически')),
-                      const PopupMenuItem(value: 'hard', child: Text('Удалить физически')),
+                      const PopupMenuItem(
+                        value: 'view',
+                        child: Text('Карточка'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'soft',
+                        child: Text('Удалить логически'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'hard',
+                        child: Text('Удалить физически'),
+                      ),
                     ],
                     onSelected: (v) {
                       if (v == 'view') context.go('/owners/${o.id}');
