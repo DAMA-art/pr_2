@@ -3,9 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/clinic.dart';
+import '../models/role.dart';
 import '../models/service.dart';
 import '../repositories/clinic_repository.dart';
 import '../repositories/service_repository.dart';
+import '../state/auth_notifier.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   final int id;
@@ -90,17 +92,20 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           onPressed: () => context.go('/services'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
-              final ok = await context.push('/services/${widget.id}/edit');
-              if (ok == true && mounted) _load();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _service == null || _service!.isDeleted ? null : _delete,
-          ),
+          if (context.watch<AuthNotifier>().has(Role.staff)) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                final ok = await context.push('/services/${widget.id}/edit');
+                if (ok == true && mounted) _load();
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed:
+                  _service == null || _service!.isDeleted ? null : _delete,
+            ),
+          ],
         ],
       ),
       body: _loading

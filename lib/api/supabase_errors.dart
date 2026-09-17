@@ -79,7 +79,7 @@ Never mapSupabaseError(Object error) {
       code: error.code,
       statusCode: int.tryParse(error.code ?? '') != null ? error.code : null,
       message: error.message,
-      fieldErrors: _fieldsFromDetails(error.details),
+      fieldErrors: _fieldsFromDetails(error.details, error.message),
     );
   }
   if (error is async.TimeoutException) {
@@ -98,11 +98,30 @@ Never mapSupabaseError(Object error) {
   throw AppException(error.toString());
 }
 
-Map<String, String> _fieldsFromDetails(dynamic details) {
+Map<String, String> _fieldsFromDetails(dynamic details, [String message = '']) {
+  final out = <String, String>{};
   if (details is Map) {
-    return details.map((k, v) => MapEntry(k.toString(), v.toString()));
+    details.forEach((k, v) => out['$k'] = '$v');
+  } else if (details is String && details.trim().isNotEmpty) {
+    out['details'] = details;
   }
-  return const {};
+  final text = '${details ?? ''} $message'.toLowerCase();
+  void add(String key, String msg) {
+    if (text.contains(key) && !out.containsKey(key)) {
+      out[key] = msg;
+    }
+  }
+
+  add('chip_number', 'Некорректный номер чипа');
+  add('age_months', 'Возраст вне допустимого диапазона');
+  add('weight_kg', 'Некорректный вес');
+  add('email', 'Некорректный email');
+  add('phone', 'Некорректный телефон');
+  add('price', 'Некорректная цена');
+  add('full_name', 'Некорректное ФИО');
+  add('number', 'Некорректный номер паспорта');
+  add('name', 'Некорректное название');
+  return out;
 }
 
 Future<T> withAuthRetry<T>(Future<T> Function() action) async {

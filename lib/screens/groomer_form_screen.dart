@@ -29,6 +29,8 @@ class _GroomerFormScreenState extends State<GroomerFormScreen> {
   bool _loading = true;
   bool _saving = false;
   List<Clinic> _clinics = [];
+  String? _nameError;
+  String? _phoneError;
 
   @override
   void initState() {
@@ -54,6 +56,10 @@ class _GroomerFormScreenState extends State<GroomerFormScreen> {
   }
 
   Future<bool> _save() async {
+    setState(() {
+      _nameError = null;
+      _phoneError = null;
+    });
     if (!_formKey.currentState!.validate()) return false;
     setState(() => _saving = true);
     final g = Groomer(
@@ -72,6 +78,18 @@ class _GroomerFormScreenState extends State<GroomerFormScreen> {
         await repo.create(g);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _nameError = e.errorFor(['full_name', 'fullName', 'name']);
+          _phoneError = e.errorFor(['phone']);
+        });
+        if (_nameError == null && _phoneError == null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
+      return false;
     } on AppException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -107,6 +125,7 @@ class _GroomerFormScreenState extends State<GroomerFormScreen> {
         AppFieldSpec.text(
           label: 'ФИО *',
           controller: _nameCtrl,
+          errorText: _nameError,
           validator: (v) => Validators.combine([
             () => Validators.required(v, field: 'ФИО'),
             () => Validators.maxLength(v, 100, field: 'ФИО'),
@@ -115,6 +134,7 @@ class _GroomerFormScreenState extends State<GroomerFormScreen> {
         AppFieldSpec.text(
           label: 'Телефон *',
           controller: _phoneCtrl,
+          errorText: _phoneError,
           keyboardType: TextInputType.phone,
           validator: Validators.phone,
         ),

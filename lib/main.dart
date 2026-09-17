@@ -15,6 +15,7 @@ import 'models/pet_passport_query.dart';
 import 'models/pet_query.dart';
 import 'models/role.dart';
 import 'models/service_query.dart';
+import 'models/visit_query.dart';
 import 'repositories/groomer_repository.dart';
 import 'repositories/clinic_repository.dart';
 import 'repositories/owner_repository.dart';
@@ -486,7 +487,9 @@ GoRouter _buildRouter(AuthNotifier auth) {
           ),
           GoRoute(
             path: '/visits',
-            builder: (_, _) => const VisitsScreen(),
+            builder: (context, state) {
+              return VisitsScreen(query: _parseVisitQuery(state.uri.queryParameters));
+            },
             routes: [
               GoRoute(
                 path: 'new',
@@ -638,10 +641,39 @@ PetPassportQuery _parsePassportQuery(Map<String, String> params) {
 }
 
 GroomerQuery _parseGroomerQuery(Map<String, String> params) {
+  String sortField = 'full_name';
+  bool sortAsc = true;
+  if (params.containsKey('sort')) {
+    final parts = params['sort']!.split(',');
+    sortField = parts[0];
+    if (parts.length > 1) sortAsc = parts[1] != 'desc';
+  }
   return GroomerQuery(
     search: params['search'] ?? '',
     clinicId: int.tryParse(params['clinicId'] ?? ''),
     specialization: params['spec'],
+    sortField: sortField,
+    sortAscending: sortAsc,
+    page: int.tryParse(params['page'] ?? '1') ?? 1,
+    size: int.tryParse(params['size'] ?? '10') ?? 10,
+    includeDeleted: params['includeDeleted'] == 'true',
+  );
+}
+
+VisitQuery _parseVisitQuery(Map<String, String> params) {
+  String sortField = 'issued_at';
+  bool sortAsc = false;
+  if (params.containsKey('sort')) {
+    final parts = params['sort']!.split(',');
+    sortField = parts[0];
+    if (parts.length > 1) sortAsc = parts[1] != 'desc';
+  }
+  return VisitQuery(
+    search: params['search'] ?? '',
+    clinicId: int.tryParse(params['clinicId'] ?? ''),
+    status: params['status'],
+    sortField: sortField,
+    sortAscending: sortAsc,
     page: int.tryParse(params['page'] ?? '1') ?? 1,
     size: int.tryParse(params['size'] ?? '10') ?? 10,
     includeDeleted: params['includeDeleted'] == 'true',

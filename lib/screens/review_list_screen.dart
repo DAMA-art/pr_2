@@ -21,6 +21,8 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
   List<Visit> _visits = [];
   bool _loading = true;
   String? _error;
+  bool _includeDeleted = false;
+  final Set<int> _selected = {};
 
   @override
   void initState() {
@@ -35,7 +37,7 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
     });
     try {
       final visitRepo = context.read<VisitRepository>();
-      _items = await _repo.listMine();
+      _items = await _repo.listMine(includeDeleted: _includeDeleted);
       _visits = await visitRepo.list();
     } on AppException catch (e) {
       _error = e.message;
@@ -156,6 +158,16 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
       appBar: AppBar(
         title: const Text('Мои отзывы'),
         actions: [
+          if (_selected.isNotEmpty)
+            IconButton(
+              tooltip: 'Удалить выбранные',
+              onPressed: () async {
+                await _repo.deleteMany(_selected.toList());
+                _selected.clear();
+                _load();
+              },
+              icon: const Icon(Icons.delete),
+            ),
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
           IconButton(
             onPressed: () => _openForm(),
@@ -163,59 +175,103 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!),
-                      const SizedBox(height: 12),
-                      FilledButton(onPressed: _load, child: const Text('Повторить')),
-                    ],
-                  ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FilterChip(
+                label: const Text('Показать удалённые'),
+                selected: _includeDeleted,
+                onSelected: (v) {
+                  setState(() {
+                    _includeDeleted = v;
+                    _selected.clear();
+                  });
+                  _load();
+                },
+              ),
+            ),
+          ),
+          Expanded(child: _listBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _listBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _load, child: const Text('Повторить')),
+          ],
+        ),
+      );
+    }
+    if (_items.isEmpty) {
+      return const Center(child: Text('Вы ещё не оставляли отзывов'));
+    }
+    return ListView.separated(
+      itemCount: _items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final r = _items[i];
+        return ListTile(
+          leading: Checkbox(
+            value: _selected.contains(r.id),
+            onChanged: (_) => setState(() {
+              _selected.contains(r.id)
+                  ? _selected.remove(r.id)
+                  : _selected.add(r.id);
+            }),
+          ),
+          title: Text(
+            r.comment,
+            style: TextStyle(
+              decoration: r.isDeleted ? TextDecoration.lineThrough : null,
+            ),
+          ),
+          subtitle: Text('${r.createdAt.toLocal()}'.split('.').first),
+          trailing: r.isDeleted
+              ? IconButton(
+                  icon: const Icon(Icons.restore, color: Colors.green),
+                  onPressed: () async {
+                    await _repo.restore(r.id);
+                    _load();
+                  },
                 )
-              : _items.isEmpty
-                  ? const Center(child: Text('Вы ещё не оставляли отзывов'))
-                  : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final r = _items[i];
-                        return ListTile(
-                          leading: CircleAvatar(child: Text('${r.rating}')),
-                          title: Text(r.comment),
-                          subtitle: Text(
-                            '${r.createdAt.toLocal()}'.split('.').first,
-                          ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (v) async {
-                              if (v == 'edit') _openForm(existing: r);
-                              if (v == 'soft') {
-                                await _repo.softDelete(r.id);
-                                _load();
-                              }
-                              if (v == 'hard') {
-                                await _repo.hardDelete(r.id);
-                                _load();
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'edit', child: Text('Изменить')),
-                              PopupMenuItem(
-                                value: 'soft',
-                                child: Text('Удалить логически'),
-                              ),
-                              PopupMenuItem(
-                                value: 'hard',
-                                child: Text('Удалить физически'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+              : PopupMenuButton<String>(
+                  onSelected: (v) async {
+                    if (v == 'edit') _openForm(existing: r);
+                    if (v == 'soft') {
+                      await _repo.softDelete(r.id);
+                      _load();
+                    }
+                    if (v == 'hard') {
+                      await _repo.hardDelete(r.id);
+                      _load();
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Изменить')),
+                    PopupMenuItem(
+                      value: 'soft',
+                      child: Text('Удалить логически'),
                     ),
+                    PopupMenuItem(
+                      value: 'hard',
+                      child: Text('Удалить физически'),
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

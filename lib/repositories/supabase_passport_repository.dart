@@ -44,8 +44,13 @@ class SupabasePassportRepository implements PetPassportRepository {
       }
       final from = (q.page - 1) * q.size;
       final to = from + q.size - 1;
+      final col = switch (q.sortField) {
+        'microchip' => 'microchip',
+        'issuedAt' || 'issued_at' => 'issued_at',
+        _ => 'number',
+      };
       final res = await query
-          .order('number', ascending: q.sortAscending)
+          .order(col, ascending: q.sortAscending)
           .range(from, to)
           .count(CountOption.exact);
       final items = (res.data as List)

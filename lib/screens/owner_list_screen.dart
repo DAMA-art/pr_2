@@ -19,6 +19,9 @@ void _syncOwnerUrl(BuildContext context, OwnerQuery q) {
   if (q.search.isNotEmpty) params['search'] = q.search;
   if (q.city != null) params['city'] = q.city!;
   if (q.country != null) params['country'] = q.country!;
+  if (q.sortField != 'lastName' || !q.sortAscending) {
+    params['sort'] = '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}';
+  }
   if (q.page != 1) params['page'] = '${q.page}';
   if (q.size != 10) params['size'] = '${q.size}';
   if (q.includeDeleted) params['includeDeleted'] = 'true';
@@ -159,6 +162,7 @@ class OwnerListScreen extends StatelessWidget {
                       : true,
                 );
                 notifier.applyQuery(next);
+                _syncOwnerUrl(context, next);
               },
               columns: [
                 TableColumnSpec(

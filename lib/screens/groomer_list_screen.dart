@@ -38,6 +38,9 @@ class _GroomerListScreenState extends State<GroomerListScreen> {
     if (q.search.isNotEmpty) params['search'] = q.search;
     if (q.clinicId != null) params['clinicId'] = '${q.clinicId}';
     if (q.specialization != null) params['spec'] = q.specialization!;
+    if (q.sortField != 'full_name' || !q.sortAscending) {
+      params['sort'] = '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}';
+    }
     if (q.page != 1) params['page'] = '${q.page}';
     if (q.size != 10) params['size'] = '${q.size}';
     if (q.includeDeleted) params['includeDeleted'] = 'true';

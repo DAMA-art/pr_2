@@ -46,6 +46,9 @@ class _PassportListScreenState extends State<PassportListScreen> {
     if (q.search.isNotEmpty) params['search'] = q.search;
     if (q.petId != null) params['petId'] = '${q.petId}';
     if (q.hasMicrochip == true) params['hasMicrochip'] = 'true';
+    if (q.sortField != 'number' || !q.sortAscending) {
+      params['sort'] = '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}';
+    }
     if (q.page != 1) params['page'] = '${q.page}';
     if (q.size != 10) params['size'] = '${q.size}';
     if (q.includeDeleted) params['includeDeleted'] = 'true';
@@ -90,9 +93,11 @@ class _PassportListScreenState extends State<PassportListScreen> {
                   SearchField(
                     initialValue: notifier.query.search,
                     hintText: 'Поиск по номеру или микрочипу...',
-                    onChanged: (v) => notifier.applyQuery(
-                      notifier.query.copyWith(search: v, page: 1),
-                    ),
+                    onChanged: (v) {
+                      final next = notifier.query.copyWith(search: v, page: 1);
+                      notifier.applyQuery(next);
+                      _syncPassport(context, next);
+                    },
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -143,9 +148,12 @@ class _PassportListScreenState extends State<PassportListScreen> {
                       FilterChip(
                         label: const Text('Показать удалённые'),
                         selected: notifier.query.includeDeleted,
-                        onSelected: (v) => notifier.applyQuery(
-                          notifier.query.copyWith(includeDeleted: v, page: 1),
-                        ),
+                        onSelected: (v) {
+                          final next = notifier.query
+                              .copyWith(includeDeleted: v, page: 1);
+                          notifier.applyQuery(next);
+                          _syncPassport(context, next);
+                        },
                       ),
                     ],
                   ),
@@ -159,11 +167,16 @@ class _PassportListScreenState extends State<PassportListScreen> {
             PaginationBar(
               result: notifier.result,
               currentSize: notifier.query.size,
-              onPageChanged: (p) =>
-                  notifier.applyQuery(notifier.query.copyWith(page: p)),
-              onSizeChanged: (s) => notifier.applyQuery(
-                notifier.query.copyWith(size: s, page: 1),
-              ),
+              onPageChanged: (p) {
+                final next = notifier.query.copyWith(page: p);
+                notifier.applyQuery(next);
+                _syncPassport(context, next);
+              },
+              onSizeChanged: (s) {
+                final next = notifier.query.copyWith(size: s, page: 1);
+                notifier.applyQuery(next);
+                _syncPassport(context, next);
+              },
             ),
         ],
       ),
@@ -286,14 +299,13 @@ class _PassportListScreenState extends State<PassportListScreen> {
               isDeleted: (p) => p.isDeleted,
               onSort: (field) {
                 final q = notifier.query;
-                notifier.applyQuery(
-                  q.copyWith(
-                    sortField: field,
-                    sortAscending: field == q.sortField
-                        ? !q.sortAscending
-                        : true,
-                  ),
+                final next = q.copyWith(
+                  sortField: field,
+                  sortAscending:
+                      field == q.sortField ? !q.sortAscending : true,
                 );
+                notifier.applyQuery(next);
+                _syncPassport(context, next);
               },
               columns: [
                 TableColumnSpec(

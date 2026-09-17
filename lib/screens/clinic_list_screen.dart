@@ -20,11 +20,23 @@ String _clinicUri(ClinicQuery q) {
   if (q.search.isNotEmpty) params['search'] = q.search;
   if (q.city != null) params['city'] = q.city!;
   if (q.hasFreeSlots == true) params['hasFreeSlots'] = 'true';
+  if (q.sortField != 'name' || !q.sortAscending) {
+    params['sort'] = '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}';
+  }
   if (q.page != 1) params['page'] = '${q.page}';
   if (q.size != 10) params['size'] = '${q.size}';
   if (q.includeDeleted) params['includeDeleted'] = 'true';
   return Uri(path: '/clinics', queryParameters: params.isEmpty ? null : params)
       .toString();
+}
+
+void _applyClinic(
+  BuildContext context,
+  ClinicListNotifier notifier,
+  ClinicQuery q,
+) {
+  notifier.applyQuery(q);
+  context.go(_clinicUri(q));
 }
 
 class ClinicListScreen extends StatelessWidget {
@@ -33,16 +45,17 @@ class ClinicListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ClinicListNotifier>();
+    final canEdit = context.watch<AuthNotifier>().has(Role.staff);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Филиалы'),
         actions: [
-          if (notifier.hasSelection)
+          if (canEdit && notifier.hasSelection)
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () => notifier.deleteSelected(),
             ),
-          if (context.watch<AuthNotifier>().has(Role.staff))
+          if (canEdit)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () async {
@@ -64,7 +77,9 @@ class ClinicListScreen extends StatelessWidget {
                   SearchField(
                     initialValue: notifier.query.search,
                     hintText: 'Поиск по названию, адресу, городу...',
-                    onChanged: (v) => notifier.applyQuery(
+                    onChanged: (v) => _applyClinic(
+                      context,
+                      notifier,
                       notifier.query.copyWith(search: v, page: 1),
                     ),
                   ),
@@ -91,7 +106,9 @@ class ClinicListScreen extends StatelessWidget {
                             for (final city in notifier.cities)
                               DropdownMenuItem(value: city, child: Text(city)),
                           ],
-                          onChanged: (v) => notifier.applyQuery(
+                          onChanged: (v) => _applyClinic(
+                            context,
+                            notifier,
                             notifier.query.copyWith(city: v, page: 1),
                           ),
                         ),
@@ -104,17 +121,19 @@ class ClinicListScreen extends StatelessWidget {
                             hasFreeSlots: v ? true : null,
                             page: 1,
                           );
-                          notifier.applyQuery(next);
-                          context.go(_clinicUri(next));
+                          _applyClinic(context, notifier, next);
                         },
                       ),
-                      FilterChip(
-                        label: const Text('Показать удалённые'),
-                        selected: notifier.query.includeDeleted,
-                        onSelected: (v) => notifier.applyQuery(
-                          notifier.query.copyWith(includeDeleted: v, page: 1),
+                      if (canEdit)
+                        FilterChip(
+                          label: const Text('Показать удалённые'),
+                          selected: notifier.query.includeDeleted,
+                          onSelected: (v) => _applyClinic(
+                            context,
+                            notifier,
+                            notifier.query.copyWith(includeDeleted: v, page: 1),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -122,14 +141,19 @@ class ClinicListScreen extends StatelessWidget {
             ),
           ),
           if (notifier.loading) const LinearProgressIndicator(),
-          Expanded(child: _body(context, notifier)),
+          Expanded(child: _body(context, notifier, canEdit)),
           if (notifier.status == LoadStatus.success)
             PaginationBar(
               result: notifier.result,
               currentSize: notifier.query.size,
-              onPageChanged: (p) =>
-                  notifier.applyQuery(notifier.query.copyWith(page: p)),
-              onSizeChanged: (s) => notifier.applyQuery(
+              onPageChanged: (p) => _applyClinic(
+                context,
+                notifier,
+                notifier.query.copyWith(page: p),
+              ),
+              onSizeChanged: (s) => _applyClinic(
+                context,
+                notifier,
                 notifier.query.copyWith(size: s, page: 1),
               ),
             ),
@@ -138,7 +162,11 @@ class ClinicListScreen extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, ClinicListNotifier notifier) {
+  Widget _body(
+    BuildContext context,
+    ClinicListNotifier notifier,
+    bool canEdit,
+  ) {
     switch (notifier.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -173,10 +201,12 @@ class ClinicListScreen extends StatelessWidget {
                         ? Colors.red.withValues(alpha: 0.08)
                         : null,
                     child: ListTile(
-                      leading: Checkbox(
-                        value: notifier.selected.contains(c.id),
-                        onChanged: (_) => notifier.toggleSelection(c.id),
-                      ),
+                      leading: canEdit
+                          ? Checkbox(
+                              value: notifier.selected.contains(c.id),
+                              onChanged: (_) => notifier.toggleSelection(c.id),
+                            )
+                          : const Icon(Icons.storefront),
                       title: Text(
                         c.name,
                         maxLines: 1,
@@ -194,7 +224,7 @@ class ClinicListScreen extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       isThreeLine: true,
-                      trailing: c.isDeleted
+                      trailing: c.isDeleted && canEdit
                           ? IconButton(
                               tooltip: 'Восстановить',
                               icon: const Icon(
@@ -205,19 +235,21 @@ class ClinicListScreen extends StatelessWidget {
                             )
                           : PopupMenuButton<String>(
                               tooltip: 'Действия',
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
                                   value: 'view',
                                   child: Text('Открыть'),
                                 ),
-                                PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Изменить'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'del',
-                                  child: Text('Удалить'),
-                                ),
+                                if (canEdit)
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text('Изменить'),
+                                  ),
+                                if (canEdit)
+                                  const PopupMenuItem(
+                                    value: 'del',
+                                    child: Text('Удалить'),
+                                  ),
                               ],
                               onSelected: (v) async {
                                 if (v == 'view') context.go('/clinics/${c.id}');
@@ -230,7 +262,6 @@ class ClinicListScreen extends StatelessWidget {
                                 if (!context.mounted) return;
                                 if (v == 'del') {
                                   await _delete(context, notifier, c);
-                                  
                                 }
                               },
                             ),
@@ -242,14 +273,16 @@ class ClinicListScreen extends StatelessWidget {
             return EntityTable<Clinic>(
               items: items,
               idOf: (c) => c.id,
-              selected: notifier.selected,
-              onToggleSelect: notifier.toggleSelection,
+              selected: canEdit ? notifier.selected : const {},
+              onToggleSelect: canEdit ? notifier.toggleSelection : null,
               sortField: notifier.query.sortField,
               sortAscending: notifier.query.sortAscending,
               isDeleted: (c) => c.isDeleted,
               onSort: (field) {
                 final q = notifier.query;
-                notifier.applyQuery(
+                _applyClinic(
+                  context,
+                  notifier,
                   q.copyWith(
                     sortField: field,
                     sortAscending: field == q.sortField
@@ -277,7 +310,7 @@ class ClinicListScreen extends StatelessWidget {
                 TableColumnSpec(label: 'Телефон', build: (c) => Text(c.phone)),
               ],
               actions: (c) => [
-                if (c.isDeleted)
+                if (c.isDeleted && canEdit)
                   IconButton(
                     icon: const Icon(Icons.restore, color: Colors.green),
                     onPressed: () => notifier.restore(c.id),
@@ -287,17 +320,19 @@ class ClinicListScreen extends StatelessWidget {
                     icon: const Icon(Icons.visibility),
                     onPressed: () => context.go('/clinics/${c.id}'),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () async {
-                      final ok = await context.push('/clinics/${c.id}/edit');
-                      if (ok == true) notifier.load();
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _delete(context, notifier, c),
-                  ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final ok = await context.push('/clinics/${c.id}/edit');
+                        if (ok == true) notifier.load();
+                      },
+                    ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _delete(context, notifier, c),
+                    ),
                 ],
               ],
             );

@@ -26,30 +26,32 @@ class PetListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Питомцы — Зоосалон'),
         actions: [
-          Consumer<PetListNotifier>(
-            builder: (context, notifier, _) {
-              if (!notifier.hasSelection) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Center(
-                  child: Text(
-                    'Выбрано: ${notifier.selected.length}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+          if (context.watch<AuthNotifier>().has(Role.staff)) ...[
+            Consumer<PetListNotifier>(
+              builder: (context, notifier, _) {
+                if (!notifier.hasSelection) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Center(
+                    child: Text(
+                      'Выбрано: ${notifier.selected.length}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-          Consumer<PetListNotifier>(
-            builder: (context, notifier, _) {
-              if (!notifier.hasSelection) return const SizedBox.shrink();
-              return IconButton(
-                icon: const Icon(Icons.delete),
-                tooltip: 'Удалить выбранные',
-                onPressed: () => _confirmBulkDelete(context, notifier),
-              );
-            },
-          ),
+                );
+              },
+            ),
+            Consumer<PetListNotifier>(
+              builder: (context, notifier, _) {
+                if (!notifier.hasSelection) return const SizedBox.shrink();
+                return IconButton(
+                  icon: const Icon(Icons.delete),
+                  tooltip: 'Удалить выбранные',
+                  onPressed: () => _confirmBulkDelete(context, notifier),
+                );
+              },
+            ),
+          ],
           if (context.watch<AuthNotifier>().has(Role.staff))
             IconButton(
               icon: const Icon(Icons.add),
@@ -68,7 +70,13 @@ class PetListScreen extends StatelessWidget {
           return Column(
             children: [
               _FiltersPanel(notifier: notifier),
-              Expanded(child: _buildBody(context, notifier)),
+              Expanded(
+                child: _buildBody(
+                  context,
+                  notifier,
+                  context.watch<AuthNotifier>().has(Role.staff),
+                ),
+              ),
               if (notifier.status == LoadStatus.success)
                 PaginationBar(
                   result: notifier.result,
@@ -91,7 +99,11 @@ class PetListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context, PetListNotifier notifier) {
+  Widget _buildBody(
+    BuildContext context,
+    PetListNotifier notifier,
+    bool canEdit,
+  ) {
     switch (notifier.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -128,13 +140,13 @@ class PetListScreen extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth < 600) {
-              return _PetCardsList(notifier: notifier);
+              return _PetCardsList(notifier: notifier, canEdit: canEdit);
             }
             return EntityTable<Pet>(
               items: notifier.result.items,
               idOf: (p) => p.id,
-              selected: notifier.selected,
-              onToggleSelect: notifier.toggleSelection,
+              selected: canEdit ? notifier.selected : const {},
+              onToggleSelect: canEdit ? notifier.toggleSelection : null,
               sortField: notifier.query.sortField,
               sortAscending: notifier.query.sortAscending,
               isDeleted: (p) => p.isDeleted,
@@ -180,20 +192,26 @@ class PetListScreen extends StatelessWidget {
                 ),
               ],
               actions: (p) => [
-                if (p.isDeleted)
+                if (p.isDeleted && canEdit)
                   IconButton(
                     icon: const Icon(Icons.restore, color: Colors.green),
                     onPressed: () => notifier.restore(p.id),
                   )
                 else ...[
                   IconButton(
-                    icon: const Icon(Icons.edit),
+                    icon: const Icon(Icons.visibility),
                     onPressed: () => context.go('/pets/${p.id}'),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmDelete(context, notifier, p),
-                  ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => context.go('/pets/${p.id}/edit'),
+                    ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _confirmDelete(context, notifier, p),
+                    ),
                 ],
               ],
             );
@@ -373,12 +391,13 @@ class _FiltersPanelState extends State<_FiltersPanel> {
                     onChanged: (v) => _apply(q.copyWith(clinicId: v, page: 1)),
                   ),
                 ),
-                FilterChip(
-                  label: const Text('Показать удалённые'),
-                  selected: q.includeDeleted,
-                  onSelected: (v) =>
-                      _apply(q.copyWith(includeDeleted: v, page: 1)),
-                ),
+                if (context.watch<AuthNotifier>().has(Role.staff))
+                  FilterChip(
+                    label: const Text('Показать удалённые'),
+                    selected: q.includeDeleted,
+                    onSelected: (v) =>
+                        _apply(q.copyWith(includeDeleted: v, page: 1)),
+                  ),
               ],
             ),
           ],
@@ -390,7 +409,8 @@ class _FiltersPanelState extends State<_FiltersPanel> {
 
 class _PetCardsList extends StatelessWidget {
   final PetListNotifier notifier;
-  const _PetCardsList({required this.notifier});
+  final bool canEdit;
+  const _PetCardsList({required this.notifier, required this.canEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -402,10 +422,12 @@ class _PetCardsList extends StatelessWidget {
         return Card(
           color: p.isDeleted ? Colors.red.withValues(alpha: 0.08) : null,
           child: ListTile(
-            leading: Checkbox(
-              value: notifier.selected.contains(p.id),
-              onChanged: (_) => notifier.toggleSelection(p.id),
-            ),
+            leading: canEdit
+                ? Checkbox(
+                    value: notifier.selected.contains(p.id),
+                    onChanged: (_) => notifier.toggleSelection(p.id),
+                  )
+                : const Icon(Icons.pets),
             title: Text(
               p.name,
               style: TextStyle(
@@ -417,22 +439,24 @@ class _PetCardsList extends StatelessWidget {
               '${speciesLabel(p.species)} · ${p.breed}\nЧип: ${p.chipNumber}',
             ),
             isThreeLine: true,
-            trailing: p.isDeleted
+            trailing: p.isDeleted && canEdit
                 ? IconButton(
                     icon: const Icon(Icons.restore, color: Colors.green),
                     onPressed: () => notifier.restore(p.id),
                   )
                 : PopupMenuButton(
-                    itemBuilder: (ctx) => const [
-                      PopupMenuItem(value: 'view', child: Text('Карточка')),
-                      PopupMenuItem(
-                        value: 'soft',
-                        child: Text('Удалить логически'),
-                      ),
-                      PopupMenuItem(
-                        value: 'hard',
-                        child: Text('Удалить физически'),
-                      ),
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(value: 'view', child: Text('Карточка')),
+                      if (canEdit)
+                        const PopupMenuItem(
+                          value: 'soft',
+                          child: Text('Удалить логически'),
+                        ),
+                      if (canEdit)
+                        const PopupMenuItem(
+                          value: 'hard',
+                          child: Text('Удалить физически'),
+                        ),
                     ],
                     onSelected: (v) {
                       if (v == 'view') context.go('/pets/${p.id}');

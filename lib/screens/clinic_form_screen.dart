@@ -76,7 +76,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
       return true;
     } on ValidationException catch (e) {
       if (mounted) {
-        setState(() => _nameUniqueError = e.fieldErrors['name']);
+        setState(() => _nameUniqueError = e.errorFor(['name']));
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
       }

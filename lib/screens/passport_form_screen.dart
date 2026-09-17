@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
+import '../api/app_exceptions.dart';
 import '../repositories/pet_repository.dart';
 import '../repositories/pet_passport_repository.dart';
 import '../utils/validators.dart';
@@ -106,6 +107,16 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
         await repo.create(passport);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() =>
+            _numberUniqueError = e.errorFor(['number']));
+        if (_numberUniqueError == null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
+      return false;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

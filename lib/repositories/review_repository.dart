@@ -20,16 +20,13 @@ class ReviewRepository {
             : null,
       );
 
-  Future<List<Review>> listMine() async {
+  Future<List<Review>> listMine({bool includeDeleted = false}) async {
     return withAuthRetry(() async {
       final uid = _c.auth.currentUser?.id;
       if (uid == null) return const [];
-      final data = await _c
-          .from('reviews')
-          .select()
-          .eq('author_id', uid)
-          .isFilter('deleted_at', null)
-          .order('created_at', ascending: false);
+      var query = _c.from('reviews').select().eq('author_id', uid);
+      if (!includeDeleted) query = query.isFilter('deleted_at', null);
+      final data = await query.order('created_at', ascending: false);
       return (data as List)
           .map((e) => _map(Map<String, dynamic>.from(e as Map)))
           .toList();
@@ -84,5 +81,12 @@ class ReviewRepository {
     await withAuthRetry(() async {
       await _c.from('reviews').update({'deleted_at': null}).eq('id', id);
     });
+  }
+
+  Future<int> deleteMany(List<int> ids) async {
+    for (final id in ids) {
+      await softDelete(id);
+    }
+    return ids.length;
   }
 }

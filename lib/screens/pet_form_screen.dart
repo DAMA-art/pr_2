@@ -165,8 +165,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
       if (mounted) {
         setState(() {
           _chipUniqueError =
-              e.fieldErrors['chipNumber'] ?? e.fieldErrors['isbn'];
-          _passportUniqueError = e.fieldErrors['number'];
+              e.errorFor(['chipNumber', 'chip_number', 'isbn']);
+          _passportUniqueError = e.errorFor(['number']);
         });
         if (e.fieldErrors.isEmpty) {
           ScaffoldMessenger.of(context)

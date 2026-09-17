@@ -75,7 +75,7 @@ class _OwnerFormScreenState extends State<OwnerFormScreen> {
       return true;
     } on ValidationException catch (e) {
       if (mounted) {
-        setState(() => _emailUniqueError = e.fieldErrors['email']);
+        setState(() => _emailUniqueError = e.errorFor(['email']));
         if (_emailUniqueError == null) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(e.message)));

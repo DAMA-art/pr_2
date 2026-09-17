@@ -46,8 +46,14 @@ class SupabaseClinicRepository implements ClinicRepository {
       }
       final from = (q.page - 1) * q.size;
       final to = from + q.size - 1;
+      final col = switch (q.sortField) {
+        'city' => 'city',
+        'address' => 'address',
+        'phone' => 'phone',
+        _ => 'name',
+      };
       final res = await query
-          .order('name', ascending: q.sortAscending)
+          .order(col, ascending: q.sortAscending)
           .range(from, to)
           .count(CountOption.exact);
       final items = (res.data as List)

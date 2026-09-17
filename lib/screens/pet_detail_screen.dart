@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../api/app_exceptions.dart';
 import '../models/pet.dart';
 import '../models/owner.dart';
+import '../models/role.dart';
 import '../models/service.dart';
 import '../models/clinic.dart';
 import '../models/pet_passport.dart';
@@ -14,6 +15,7 @@ import '../repositories/service_repository.dart';
 import '../repositories/clinic_repository.dart';
 import '../repositories/pet_passport_repository.dart';
 import '../repositories/visit_repository.dart';
+import '../state/auth_notifier.dart';
 import '../utils/species.dart';
 
 class PetDetailScreen extends StatefulWidget {
@@ -164,17 +166,19 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
           onPressed: () => context.go('/pets'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
-              final ok = await context.push('/pets/${widget.id}/edit');
-              if (ok == true && mounted) _load();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _pet == null || _pet!.isDeleted ? null : _delete,
-          ),
+          if (context.watch<AuthNotifier>().has(Role.staff)) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                final ok = await context.push('/pets/${widget.id}/edit');
+                if (ok == true && mounted) _load();
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _pet == null || _pet!.isDeleted ? null : _delete,
+            ),
+          ],
         ],
       ),
       body: _loading

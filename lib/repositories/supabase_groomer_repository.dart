@@ -48,8 +48,14 @@ class SupabaseGroomerRepository implements GroomerRepository {
       }
       final from = (q.page - 1) * q.size;
       final to = from + q.size - 1;
+      final col = switch (q.sortField) {
+        'experience_years' || 'experienceYears' => 'experience_years',
+        'specialization' => 'specialization',
+        'phone' => 'phone',
+        _ => 'full_name',
+      };
       final res = await query
-          .order('full_name', ascending: q.sortAscending)
+          .order(col, ascending: q.sortAscending)
           .range(from, to)
           .count(CountOption.exact);
       final items = (res.data as List)

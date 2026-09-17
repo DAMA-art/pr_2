@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/service.dart';
 import '../models/clinic.dart';
+import '../api/app_exceptions.dart';
 import '../repositories/service_repository.dart';
 import '../repositories/clinic_repository.dart';
 import '../utils/validators.dart';
@@ -29,6 +30,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _nameUniqueError;
+  String? _priceError;
 
   @override
   void initState() {
@@ -53,7 +55,10 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   }
 
   Future<bool> _save() async {
-    setState(() => _nameUniqueError = null);
+    setState(() {
+      _nameUniqueError = null;
+      _priceError = null;
+    });
     if (!_formKey.currentState!.validate()) return false;
 
     final repo = context.read<ServiceRepository>();
@@ -81,6 +86,18 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         await repo.create(service);
       }
       return true;
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _nameUniqueError = e.errorFor(['name']);
+          _priceError = e.errorFor(['price']);
+        });
+        if (_nameUniqueError == null && _priceError == null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
+      return false;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -127,6 +144,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         AppFieldSpec.text(
           label: 'Цена (₽) *',
           controller: _priceCtrl,
+          errorText: _priceError,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => Validators.positiveDouble(v, field: 'Цена'),
         ),

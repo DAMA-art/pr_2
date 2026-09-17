@@ -2,7 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../api/app_exceptions.dart';
 import '../api/supabase_errors.dart';
+import '../models/page_result.dart';
 import '../models/visit.dart';
+import '../models/visit_query.dart';
 import '../utils/grooming_quote.dart';
 
 class VisitRepository {
@@ -47,15 +49,49 @@ class VisitRepository {
   static const _select =
       '*, pets(name, weight_kg, species), clinics(name), groomers(full_name), visit_services(service_id)';
 
-  Future<List<Visit>> list({bool includeDeleted = false}) async {
+  Future<PageResult<Visit>> find(VisitQuery q) async {
     return withAuthRetry(() async {
-      var query = _c.from('visits').select(_select);
-      if (!includeDeleted) query = query.isFilter('deleted_at', null);
-      final data = await query.order('issued_at', ascending: false);
-      return (data as List)
+      final select = q.search.trim().isNotEmpty
+          ? '*, pets!inner(name, weight_kg, species), clinics(name), groomers(full_name), visit_services(service_id)'
+          : _select;
+      var query = _c.from('visits').select(select);
+      if (!q.includeDeleted) query = query.isFilter('deleted_at', null);
+      if (q.search.trim().isNotEmpty) {
+        query = query.filter('pets.name', 'ilike', '%${q.search.trim()}%');
+      }
+      if (q.clinicId != null) query = query.eq('clinic_id', q.clinicId!);
+      if (q.status != null && q.status!.isNotEmpty) {
+        query = query.eq('status', q.status!);
+      }
+      final col = switch (q.sortField) {
+        'total_price' || 'totalPrice' => 'total_price',
+        'status' => 'status',
+        'due_at' || 'dueAt' => 'due_at',
+        _ => 'issued_at',
+      };
+      final from = (q.page - 1) * q.size;
+      final to = from + q.size - 1;
+      final res = await query
+          .order(col, ascending: q.sortAscending)
+          .range(from, to)
+          .count(CountOption.exact);
+      final items = (res.data as List)
           .map((e) => _map(Map<String, dynamic>.from(e as Map)))
           .toList();
+      return PageResult(
+        items: items,
+        page: q.page,
+        size: q.size,
+        total: res.count,
+      );
     });
+  }
+
+  Future<List<Visit>> list({bool includeDeleted = false}) async {
+    final page = await find(
+      VisitQuery(includeDeleted: includeDeleted, size: 500),
+    );
+    return page.items;
   }
 
   Future<Visit?> findById(int id) async {

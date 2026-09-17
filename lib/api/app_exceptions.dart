@@ -40,6 +40,14 @@ class ServerException extends AppException {
 class ValidationException extends AppException {
   final Map<String, String> fieldErrors;
   const ValidationException(super.message, this.fieldErrors);
+
+  String? errorFor(List<String> keys) {
+    for (final key in keys) {
+      final value = fieldErrors[key];
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
 }
 
 class CancelledException extends AppException {

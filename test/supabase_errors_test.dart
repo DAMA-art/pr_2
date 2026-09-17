@@ -33,6 +33,12 @@ void main() {
     expect(e, isA<UnauthorizedException>());
   });
 
+  test('ValidationException.errorFor ищет ключи поля', () {
+    const e = ValidationException('fail', {'chip_number': 'занят'});
+    expect(e.errorFor(['chipNumber', 'chip_number']), 'занят');
+    expect(e.errorFor(['email']), isNull);
+  });
+
   test('пересечение мастера — конфликт', () {
     final e = exceptionFromPostgrest(
       code: '23505',

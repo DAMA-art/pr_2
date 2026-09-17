@@ -30,6 +30,9 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     if (q.search.isNotEmpty) params['search'] = q.search;
     if (q.clinicId != null) params['clinicId'] = '${q.clinicId}';
     if (q.maxPrice != null) params['maxPrice'] = '${q.maxPrice}';
+    if (q.sortField != 'name' || !q.sortAscending) {
+      params['sort'] = '${q.sortField},${q.sortAscending ? 'asc' : 'desc'}';
+    }
     if (q.page != 1) params['page'] = '${q.page}';
     if (q.size != 10) params['size'] = '${q.size}';
     if (q.includeDeleted) params['includeDeleted'] = 'true';
@@ -57,16 +60,17 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ServiceListNotifier>();
+    final canEdit = context.watch<AuthNotifier>().has(Role.staff);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Услуги'),
         actions: [
-          if (notifier.hasSelection)
+          if (canEdit && notifier.hasSelection)
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () => notifier.deleteSelected(),
             ),
-          if (context.watch<AuthNotifier>().has(Role.staff))
+          if (canEdit)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () async {
@@ -155,16 +159,17 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                           },
                         ),
                       ),
-                      FilterChip(
-                        label: const Text('Показать удалённые'),
-                        selected: notifier.query.includeDeleted,
-                        onSelected: (v) {
-                          final next = notifier.query
-                              .copyWith(includeDeleted: v, page: 1);
-                          notifier.applyQuery(next);
-                          _sync(next);
-                        },
-                      ),
+                      if (canEdit)
+                        FilterChip(
+                          label: const Text('Показать удалённые'),
+                          selected: notifier.query.includeDeleted,
+                          onSelected: (v) {
+                            final next = notifier.query
+                                .copyWith(includeDeleted: v, page: 1);
+                            notifier.applyQuery(next);
+                            _sync(next);
+                          },
+                        ),
                     ],
                   ),
                 ],
@@ -172,7 +177,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             ),
           ),
           if (notifier.loading) const LinearProgressIndicator(),
-          Expanded(child: _buildBody(context, notifier)),
+          Expanded(child: _buildBody(context, notifier, canEdit)),
           if (notifier.status == LoadStatus.success)
             PaginationBar(
               result: notifier.result,
@@ -193,7 +198,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context, ServiceListNotifier notifier) {
+  Widget _buildBody(
+    BuildContext context,
+    ServiceListNotifier notifier,
+    bool canEdit,
+  ) {
     switch (notifier.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -229,10 +238,12 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                         ? Colors.red.withValues(alpha: 0.08)
                         : null,
                     child: ListTile(
-                      leading: Checkbox(
-                        value: notifier.selected.contains(s.id),
-                        onChanged: (_) => notifier.toggleSelection(s.id),
-                      ),
+                      leading: canEdit
+                          ? Checkbox(
+                              value: notifier.selected.contains(s.id),
+                              onChanged: (_) => notifier.toggleSelection(s.id),
+                            )
+                          : const Icon(Icons.spa),
                       title: Text(
                         s.name,
                         maxLines: 1,
@@ -249,7 +260,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      trailing: s.isDeleted
+                      trailing: s.isDeleted && canEdit
                           ? IconButton(
                               tooltip: 'Восстановить',
                               icon: const Icon(
@@ -260,19 +271,21 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                             )
                           : PopupMenuButton<String>(
                               tooltip: 'Действия',
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
                                   value: 'view',
                                   child: Text('Открыть'),
                                 ),
-                                PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Изменить'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'del',
-                                  child: Text('Удалить'),
-                                ),
+                                if (canEdit)
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text('Изменить'),
+                                  ),
+                                if (canEdit)
+                                  const PopupMenuItem(
+                                    value: 'del',
+                                    child: Text('Удалить'),
+                                  ),
                               ],
                               onSelected: (v) async {
                                 if (v == 'view') {
@@ -297,21 +310,20 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             return EntityTable<Service>(
               items: notifier.result.items,
               idOf: (s) => s.id,
-              selected: notifier.selected,
-              onToggleSelect: notifier.toggleSelection,
+              selected: canEdit ? notifier.selected : const {},
+              onToggleSelect: canEdit ? notifier.toggleSelection : null,
               sortField: notifier.query.sortField,
               sortAscending: notifier.query.sortAscending,
               isDeleted: (s) => s.isDeleted,
               onSort: (field) {
                 final q = notifier.query;
-                notifier.applyQuery(
-                  q.copyWith(
-                    sortField: field,
-                    sortAscending: field == q.sortField
-                        ? !q.sortAscending
-                        : true,
-                  ),
+                final next = q.copyWith(
+                  sortField: field,
+                  sortAscending:
+                      field == q.sortField ? !q.sortAscending : true,
                 );
+                notifier.applyQuery(next);
+                _sync(next);
               },
               columns: [
                 TableColumnSpec(
@@ -332,7 +344,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 ),
               ],
               actions: (s) => [
-                if (s.isDeleted)
+                if (s.isDeleted && canEdit)
                   IconButton(
                     icon: const Icon(Icons.restore, color: Colors.green),
                     onPressed: () => notifier.restore(s.id),
@@ -342,17 +354,19 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                     icon: const Icon(Icons.visibility),
                     onPressed: () => context.go('/services/${s.id}'),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () async {
-                      final ok = await context.push('/services/${s.id}/edit');
-                      if (ok == true) notifier.load();
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _delete(context, notifier, s),
-                  ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final ok = await context.push('/services/${s.id}/edit');
+                        if (ok == true) notifier.load();
+                      },
+                    ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _delete(context, notifier, s),
+                    ),
                 ],
               ],
             );
