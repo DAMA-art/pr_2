@@ -7,6 +7,7 @@ import '../models/role.dart';
 import '../state/auth_notifier.dart';
 import '../models/pet.dart';
 import '../models/pet_passport.dart';
+import '../models/pet_passport_query.dart';
 import '../repositories/pet_repository.dart';
 import '../state/load_status.dart';
 import '../state/passport_list_notifier.dart';
@@ -38,6 +39,20 @@ class _PassportListScreenState extends State<PassportListScreen> {
       if (p.id == id) return p.name;
     }
     return '#$id';
+  }
+
+  void _syncPassport(BuildContext context, PetPassportQuery q) {
+    final params = <String, String>{};
+    if (q.search.isNotEmpty) params['search'] = q.search;
+    if (q.petId != null) params['petId'] = '${q.petId}';
+    if (q.hasMicrochip == true) params['hasMicrochip'] = 'true';
+    if (q.page != 1) params['page'] = '${q.page}';
+    if (q.size != 10) params['size'] = '${q.size}';
+    if (q.includeDeleted) params['includeDeleted'] = 'true';
+    context.go(
+      Uri(path: '/passports', queryParameters: params.isEmpty ? null : params)
+          .toString(),
+    );
   }
 
   @override
@@ -105,10 +120,25 @@ class _PassportListScreenState extends State<PassportListScreen> {
                                 child: Text(p.name),
                               ),
                           ],
-                          onChanged: (v) => notifier.applyQuery(
-                            notifier.query.copyWith(petId: v, page: 1),
-                          ),
+                          onChanged: (v) {
+                            final next =
+                                notifier.query.copyWith(petId: v, page: 1);
+                            notifier.applyQuery(next);
+                            _syncPassport(context, next);
+                          },
                         ),
+                      ),
+                      FilterChip(
+                        label: const Text('Только с микрочипом'),
+                        selected: notifier.query.hasMicrochip == true,
+                        onSelected: (v) {
+                          final next = notifier.query.copyWith(
+                            hasMicrochip: v ? true : null,
+                            page: 1,
+                          );
+                          notifier.applyQuery(next);
+                          _syncPassport(context, next);
+                        },
                       ),
                       FilterChip(
                         label: const Text('Показать удалённые'),

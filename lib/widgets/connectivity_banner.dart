@@ -1,9 +1,6 @@
 import 'dart:async';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-
-import '../api/api_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ConnectivityBanner extends StatefulWidget {
   final Widget child;
@@ -33,14 +30,7 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
 
   Future<void> _check() async {
     try {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          connectTimeout: const Duration(seconds: 3),
-          receiveTimeout: const Duration(seconds: 3),
-        ),
-      );
-      await dio.get('/__health');
+      await Supabase.instance.client.from('pets').select('id').limit(1);
       if (mounted && _offline) setState(() => _offline = false);
     } catch (_) {
       if (mounted && !_offline) setState(() => _offline = true);

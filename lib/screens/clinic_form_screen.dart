@@ -143,7 +143,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
           ]),
         ),
         AppFieldSpec.text(
-          label: 'Мест стационара *',
+          label: 'Боксы ожидания *',
           controller: _slotsCtrl,
           keyboardType: TextInputType.number,
           validator: (v) => Validators.nonNegativeInt(v, field: 'Число мест'),

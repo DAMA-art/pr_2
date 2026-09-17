@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
-import '../api/app_exceptions.dart';
 import '../state/auth_notifier.dart';
+import '../utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -50,24 +49,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() => _loading = true);
     try {
-      await context.read<AuthNotifier>().register(
-        username: _username.text.trim(),
+      final ok = await context.read<AuthNotifier>().register(
+        email: _email.text.trim(),
         password: _password.text,
         fullName: _fullName.text.trim(),
-        email: _email.text.trim(),
       );
       if (!mounted) return;
+      if (!ok) {
+        setState(() => _error = context.read<AuthNotifier>().error ?? 'Ошибка');
+        return;
+      }
       context.go('/pets');
-    } on ValidationException catch (e) {
-      setState(
-        () => _error =
-            e.message +
-            (e.fieldErrors.isNotEmpty
-                ? ': ${e.fieldErrors.values.join(', ')}'
-                : ''),
-      );
-    } on AppException catch (e) {
-      setState(() => _error = e.message);
     } catch (e) {
       setState(() => _error = 'Ошибка регистрации: $e');
     } finally {
@@ -148,10 +140,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _email,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'Email *',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.emailAddress,
+                      validator: Validators.email,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

@@ -1,9 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../api/app_exceptions.dart';
-import '../api/dio_client.dart';
+import '../api/supabase_errors.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -13,7 +12,7 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  Map<String, dynamic>? _stats;
+  Map<String, int> _stats = {};
   bool _loading = true;
   String? _error;
 
@@ -23,22 +22,51 @@ class _StatsScreenState extends State<StatsScreen> {
     _load();
   }
 
+  Future<int> _count(String table) async {
+    final res = await Supabase.instance.client
+        .from(table)
+        .select('id')
+        .isFilter('deleted_at', null)
+        .count(CountOption.exact);
+    return res.count;
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final dio = context.read<Dio>();
-      final res = await dio.get<Map<String, dynamic>>('/stats');
-      _stats = Map<String, dynamic>.from(res.data ?? {});
+      final pets = await _count('pets');
+      final owners = await _count('owners');
+      final clinics = await _count('clinics');
+      final services = await _count('services');
+      final groomers = await _count('groomers');
+      final visits = await _count('visits');
+      final reviews = await _count('reviews');
+      final users = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .count(CountOption.exact);
+      _stats = {
+        'Питомцы': pets,
+        'Владельцы': owners,
+        'Филиалы': clinics,
+        'Услуги': services,
+        'Мастера': groomers,
+        'Записи': visits,
+        'Отзывы': reviews,
+        'Пользователи': users.count,
+      };
+    } on AppException catch (e) {
+      _error = e.message;
     } catch (e) {
       try {
-        mapDioError(e);
+        mapSupabaseError(e);
       } on AppException catch (ae) {
         _error = ae.message;
       } catch (_) {
-        _error = e.toString();
+        _error = '$e';
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -57,22 +85,17 @@ class _StatsScreenState extends State<StatsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text(_error!))
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _card('Питомцы', _stats?['pets']),
-                  _card('Владельцы', _stats?['owners']),
-                  _card('Филиалы', _stats?['clinics']),
-                  _card('Услуги', _stats?['services']),
-                  _card('Активные заселения', _stats?['visitsActive']),
-                  _card('Пользователи', _stats?['users']),
-                ],
-              ),
-            ),
+              ? Center(child: Text(_error!))
+              : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      for (final e in _stats.entries) _card(e.key, e.value),
+                    ],
+                  ),
+                ),
     );
   }
 

@@ -20,12 +20,20 @@ class ResponsiveScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthNotifier>();
     final isStaff = auth.has(Role.staff);
+    final isClientOnly = auth.isExactly(Role.client);
+    final isStaffOnly = auth.isExactly(Role.staff);
     final width = MediaQuery.sizeOf(context).width;
 
     final paths = <String>['/pets', '/services', '/clinics', '/visits'];
     if (isStaff) {
       paths.insert(1, '/owners');
-      paths.insert(4, '/passports');
+      paths.add('/groomers');
+    }
+    if (isStaffOnly) {
+      paths.add('/passports');
+    }
+    if (isClientOnly) {
+      paths.add('/reviews');
     }
 
     int selected = 0;
@@ -46,26 +54,38 @@ class ResponsiveScaffold extends StatelessWidget {
           label: 'Владельцы',
         ),
       const NavigationDestination(
-        icon: Icon(Icons.medical_services_outlined),
-        selectedIcon: Icon(Icons.medical_services),
+        icon: Icon(Icons.spa_outlined),
+        selectedIcon: Icon(Icons.spa),
         label: 'Услуги',
       ),
       const NavigationDestination(
-        icon: Icon(Icons.local_hospital_outlined),
-        selectedIcon: Icon(Icons.local_hospital),
+        icon: Icon(Icons.storefront_outlined),
+        selectedIcon: Icon(Icons.storefront),
         label: 'Филиалы',
       ),
+      const NavigationDestination(
+        icon: Icon(Icons.event_outlined),
+        selectedIcon: Icon(Icons.event),
+        label: 'Записи',
+      ),
       if (isStaff)
+        const NavigationDestination(
+          icon: Icon(Icons.content_cut_outlined),
+          selectedIcon: Icon(Icons.content_cut),
+          label: 'Мастера',
+        ),
+      if (isStaffOnly)
         const NavigationDestination(
           icon: Icon(Icons.badge_outlined),
           selectedIcon: Icon(Icons.badge),
           label: 'Паспорта',
         ),
-      const NavigationDestination(
-        icon: Icon(Icons.hotel_outlined),
-        selectedIcon: Icon(Icons.hotel),
-        label: 'Заселения',
-      ),
+      if (isClientOnly)
+        const NavigationDestination(
+          icon: Icon(Icons.reviews_outlined),
+          selectedIcon: Icon(Icons.reviews),
+          label: 'Отзывы',
+        ),
     ];
 
     void goIndex(int i) {
@@ -75,7 +95,7 @@ class ResponsiveScaffold extends StatelessWidget {
     final appBar = AppBar(
       title: const Text('Зоосалон'),
       actions: [
-        if (auth.has(Role.admin)) ...[
+        if (auth.isExactly(Role.admin)) ...[
           IconButton(
             tooltip: 'Статистика',
             onPressed: () => context.go('/admin/stats'),

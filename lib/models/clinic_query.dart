@@ -1,6 +1,7 @@
 class ClinicQuery {
   final String search;
   final String? city;
+  final bool? hasFreeSlots;
   final String sortField;
   final bool sortAscending;
   final int page;
@@ -10,6 +11,7 @@ class ClinicQuery {
   const ClinicQuery({
     this.search = '',
     this.city,
+    this.hasFreeSlots,
     this.sortField = 'name',
     this.sortAscending = true,
     this.page = 1,
@@ -20,6 +22,7 @@ class ClinicQuery {
   ClinicQuery copyWith({
     String? search,
     Object? city = _unset,
+    Object? hasFreeSlots = _unset,
     String? sortField,
     bool? sortAscending,
     int? page,
@@ -29,6 +32,8 @@ class ClinicQuery {
     return ClinicQuery(
       search: search ?? this.search,
       city: city == _unset ? this.city : city as String?,
+      hasFreeSlots:
+          hasFreeSlots == _unset ? this.hasFreeSlots : hasFreeSlots as bool?,
       sortField: sortField ?? this.sortField,
       sortAscending: sortAscending ?? this.sortAscending,
       page: page ?? 1,

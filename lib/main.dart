@@ -2,29 +2,35 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_strategy/url_strategy.dart';
 
-import 'api/auth_api.dart';
 import 'api/dio_client.dart';
 import 'api/directory_cache.dart';
+import 'api/supabase_config.dart';
+import 'models/groomer_query.dart';
 import 'models/clinic_query.dart';
 import 'models/owner_query.dart';
 import 'models/pet_passport_query.dart';
 import 'models/pet_query.dart';
 import 'models/role.dart';
 import 'models/service_query.dart';
-import 'repositories/api_clinic_repository.dart';
-import 'repositories/api_owner_repository.dart';
-import 'repositories/api_pet_passport_repository.dart';
-import 'repositories/api_pet_repository.dart';
-import 'repositories/api_service_repository.dart';
+import 'repositories/groomer_repository.dart';
 import 'repositories/clinic_repository.dart';
 import 'repositories/owner_repository.dart';
 import 'repositories/pet_passport_repository.dart';
 import 'repositories/pet_repository.dart';
 import 'repositories/service_repository.dart';
+import 'repositories/supabase_groomer_repository.dart';
+import 'repositories/supabase_clinic_repository.dart';
+import 'repositories/supabase_owner_repository.dart';
+import 'repositories/supabase_passport_repository.dart';
+import 'repositories/supabase_pet_repository.dart';
+import 'repositories/supabase_service_repository.dart';
 import 'repositories/visit_repository.dart';
+import 'screens/groomer_detail_screen.dart';
+import 'screens/groomer_form_screen.dart';
+import 'screens/groomer_list_screen.dart';
 import 'screens/clinic_detail_screen.dart';
 import 'screens/clinic_form_screen.dart';
 import 'screens/clinic_list_screen.dart';
@@ -39,44 +45,44 @@ import 'screens/passport_list_screen.dart';
 import 'screens/pet_detail_screen.dart';
 import 'screens/pet_form_screen.dart';
 import 'screens/pet_list_screen.dart';
+import 'screens/review_list_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/service_detail_screen.dart';
 import 'screens/service_form_screen.dart';
 import 'screens/service_list_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/users_screen.dart';
+import 'screens/visit_form_screen.dart';
 import 'screens/visits_screen.dart';
 import 'state/auth_notifier.dart';
+import 'state/groomer_list_notifier.dart';
 import 'state/clinic_list_notifier.dart';
+import 'state/load_status.dart';
 import 'state/owner_list_notifier.dart';
 import 'state/passport_list_notifier.dart';
 import 'state/pet_list_notifier.dart';
 import 'state/service_list_notifier.dart';
+import 'widgets/connectivity_banner.dart';
 import 'widgets/inactivity_watcher.dart';
 import 'widgets/responsive_scaffold.dart';
-import 'widgets/connectivity_banner.dart';
 
 final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 const _maxSessionDuration = Duration(hours: 8);
-const _inactivityTimeout = Duration(seconds: 40); //seconds: 40, minutes: 3
+const _inactivityTimeout = Duration(minutes: 3);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
 
-  final prefs = await SharedPreferences.getInstance();
-  final dio = createDio();
-  final cache = DirectoryCache();
-  final authApi = AuthApi(dio);
-  final auth = AuthNotifier(prefs, authApi);
-
-  bindAuthToDio(
-    tokenProvider: () => auth.accessToken,
-    refresher: () => auth.refreshTokens(),
-    onRefreshFailed: () => auth.logout(),
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    publishableKey: SupabaseConfig.anonKey,
   );
 
+  final dio = createDio();
+  final cache = DirectoryCache();
+  final auth = AuthNotifier();
   await auth.restore();
 
   runApp(
@@ -84,38 +90,36 @@ Future<void> main() async {
       providers: [
         Provider<Dio>.value(value: dio),
         Provider<DirectoryCache>.value(value: cache),
-        Provider<AuthApi>.value(value: authApi),
         ChangeNotifierProvider<AuthNotifier>.value(value: auth),
-        Provider<PetRepository>(create: (_) => ApiPetRepository(dio)),
-        Provider<OwnerRepository>(
-          create: (_) => ApiOwnerRepository(dio, cache),
-        ),
-        Provider<ServiceRepository>(
-          create: (_) => ApiServiceRepository(dio, cache),
-        ),
-        Provider<ClinicRepository>(
-          create: (_) => ApiClinicRepository(dio, cache),
-        ),
+
+        Provider<PetRepository>(create: (_) => SupabasePetRepository()),
+        Provider<OwnerRepository>(create: (_) => SupabaseOwnerRepository()),
+        Provider<ClinicRepository>(create: (_) => SupabaseClinicRepository()),
+        Provider<ServiceRepository>(create: (_) => SupabaseServiceRepository()),
         Provider<PetPassportRepository>(
-          create: (_) => ApiPetPassportRepository(dio),
+          create: (_) => SupabasePassportRepository(),
         ),
-        Provider(create: (_) => VisitRepository(dio)),
+        Provider<VisitRepository>(create: (_) => VisitRepository()),
+        Provider<GroomerRepository>(create: (_) => SupabaseGroomerRepository()),
+
         ChangeNotifierProvider(
-          create: (c) => PetListNotifier(c.read<PetRepository>())..load(),
+          create: (c) => PetListNotifier(c.read<PetRepository>()),
         ),
         ChangeNotifierProvider(
-          create: (c) => OwnerListNotifier(c.read<OwnerRepository>())..load(),
+          create: (c) => OwnerListNotifier(c.read<OwnerRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (c) => ClinicListNotifier(c.read<ClinicRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (c) => ServiceListNotifier(c.read<ServiceRepository>()),
         ),
         ChangeNotifierProvider(
           create: (c) =>
-              ServiceListNotifier(c.read<ServiceRepository>())..load(),
+              PassportListNotifier(c.read<PetPassportRepository>()),
         ),
         ChangeNotifierProvider(
-          create: (c) => ClinicListNotifier(c.read<ClinicRepository>())..load(),
-        ),
-        ChangeNotifierProvider(
-          create: (c) =>
-              PassportListNotifier(c.read<PetPassportRepository>())..load(),
+          create: (c) => GroomerListNotifier(c.read<GroomerRepository>()),
         ),
       ],
       child: ZooSalonApp(auth: auth),
@@ -245,16 +249,18 @@ GoRouter _buildRouter(AuthNotifier auth) {
               final q = _parsePetQuery(state.uri.queryParameters);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final n = context.read<PetListNotifier>();
-                if (_petQueryChanged(n.query, q)) n.applyQuery(q);
+                if (n.status == LoadStatus.idle ||
+                    _petQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
               });
               return const PetListScreen();
             },
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
-                    ? null
-                    : '/forbidden',
+                redirect: (c, s) =>
+                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
                 builder: (_, _) => const PetFormScreen(),
               ),
               GoRoute(
@@ -287,7 +293,10 @@ GoRouter _buildRouter(AuthNotifier auth) {
               final q = _parseOwnerQuery(state.uri.queryParameters);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final n = context.read<OwnerListNotifier>();
-                if (_ownerQueryChanged(n.query, q)) n.applyQuery(q);
+                if (n.status == LoadStatus.idle ||
+                    _ownerQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
               });
               return const OwnerListScreen();
             },
@@ -318,16 +327,18 @@ GoRouter _buildRouter(AuthNotifier auth) {
               final q = _parseServiceQuery(state.uri.queryParameters);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final n = context.read<ServiceListNotifier>();
-                if (_serviceQueryChanged(n.query, q)) n.applyQuery(q);
+                if (n.status == LoadStatus.idle ||
+                    _serviceQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
               });
               return const ServiceListScreen();
             },
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
-                    ? null
-                    : '/forbidden',
+                redirect: (c, s) =>
+                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
                 builder: (_, _) => const ServiceFormScreen(),
               ),
               GoRoute(
@@ -358,16 +369,18 @@ GoRouter _buildRouter(AuthNotifier auth) {
               final q = _parseClinicQuery(state.uri.queryParameters);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final n = context.read<ClinicListNotifier>();
-                if (_clinicQueryChanged(n.query, q)) n.applyQuery(q);
+                if (n.status == LoadStatus.idle ||
+                    _clinicQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
               });
               return const ClinicListScreen();
             },
             routes: [
               GoRoute(
                 path: 'new',
-                redirect: (c, s) => c.read<AuthNotifier>().has(Role.staff)
-                    ? null
-                    : '/forbidden',
+                redirect: (c, s) =>
+                    c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
                 builder: (_, _) => const ClinicFormScreen(),
               ),
               GoRoute(
@@ -394,13 +407,17 @@ GoRouter _buildRouter(AuthNotifier auth) {
           ),
           GoRoute(
             path: '/passports',
-            redirect: (c, s) =>
-                c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
+            redirect: (c, s) => c.read<AuthNotifier>().isExactly(Role.staff)
+                ? null
+                : '/forbidden',
             builder: (context, state) {
               final q = _parsePassportQuery(state.uri.queryParameters);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final n = context.read<PassportListNotifier>();
-                if (_passportQueryChanged(n.query, q)) n.applyQuery(q);
+                if (n.status == LoadStatus.idle ||
+                    _passportQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
               });
               return const PassportListScreen();
             },
@@ -428,17 +445,83 @@ GoRouter _buildRouter(AuthNotifier auth) {
               ),
             ],
           ),
-          GoRoute(path: '/visits', builder: (_, _) => const VisitsScreen()),
+          GoRoute(
+            path: '/groomers',
+            redirect: (c, s) =>
+                c.read<AuthNotifier>().has(Role.staff) ? null : '/forbidden',
+            builder: (context, state) {
+              final q = _parseGroomerQuery(state.uri.queryParameters);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final n = context.read<GroomerListNotifier>();
+                if (n.status == LoadStatus.idle ||
+                    _groomerQueryChanged(n.query, q)) {
+                  n.applyQuery(q);
+                }
+              });
+              return const GroomerListScreen();
+            },
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, _) => const GroomerFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (c, s) {
+                  final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                  return GroomerDetailScreen(id: id);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (c, s) {
+                      final id =
+                          int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                      return GroomerFormScreen(id: id);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/visits',
+            builder: (_, _) => const VisitsScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, _) => const VisitFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                builder: (c, s) {
+                  final id = int.tryParse(s.pathParameters['id'] ?? '') ?? 0;
+                  return VisitFormScreen(id: id);
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/reviews',
+            redirect: (c, s) => c.read<AuthNotifier>().isExactly(Role.client)
+                ? null
+                : '/forbidden',
+            builder: (_, _) => const ReviewListScreen(),
+          ),
           GoRoute(
             path: '/admin/users',
             redirect: (c, s) =>
-                c.read<AuthNotifier>().has(Role.admin) ? null : '/forbidden',
+                c.read<AuthNotifier>().isExactly(Role.admin)
+                    ? null
+                    : '/forbidden',
             builder: (_, _) => const UsersScreen(),
           ),
           GoRoute(
             path: '/admin/stats',
             redirect: (c, s) =>
-                c.read<AuthNotifier>().has(Role.admin) ? null : '/forbidden',
+                c.read<AuthNotifier>().isExactly(Role.admin)
+                    ? null
+                    : '/forbidden',
             builder: (_, _) => const StatsScreen(),
           ),
         ],
@@ -505,6 +588,7 @@ ServiceQuery _parseServiceQuery(Map<String, String> params) {
   return ServiceQuery(
     search: params['search'] ?? '',
     clinicId: int.tryParse(params['clinicId'] ?? ''),
+    maxPrice: double.tryParse(params['maxPrice'] ?? ''),
     sortField: sortField,
     sortAscending: sortAsc,
     page: int.tryParse(params['page'] ?? '1') ?? 1,
@@ -524,6 +608,7 @@ ClinicQuery _parseClinicQuery(Map<String, String> params) {
   return ClinicQuery(
     search: params['search'] ?? '',
     city: params['city'],
+    hasFreeSlots: params['hasFreeSlots'] == 'true' ? true : null,
     sortField: sortField,
     sortAscending: sortAsc,
     page: int.tryParse(params['page'] ?? '1') ?? 1,
@@ -543,8 +628,20 @@ PetPassportQuery _parsePassportQuery(Map<String, String> params) {
   return PetPassportQuery(
     search: params['search'] ?? '',
     petId: int.tryParse(params['petId'] ?? ''),
+    hasMicrochip: params['hasMicrochip'] == 'true' ? true : null,
     sortField: sortField,
     sortAscending: sortAsc,
+    page: int.tryParse(params['page'] ?? '1') ?? 1,
+    size: int.tryParse(params['size'] ?? '10') ?? 10,
+    includeDeleted: params['includeDeleted'] == 'true',
+  );
+}
+
+GroomerQuery _parseGroomerQuery(Map<String, String> params) {
+  return GroomerQuery(
+    search: params['search'] ?? '',
+    clinicId: int.tryParse(params['clinicId'] ?? ''),
+    specialization: params['spec'],
     page: int.tryParse(params['page'] ?? '1') ?? 1,
     size: int.tryParse(params['size'] ?? '10') ?? 10,
     includeDeleted: params['includeDeleted'] == 'true',
@@ -577,6 +674,7 @@ bool _ownerQueryChanged(OwnerQuery a, OwnerQuery b) =>
 bool _serviceQueryChanged(ServiceQuery a, ServiceQuery b) =>
     a.search != b.search ||
     a.clinicId != b.clinicId ||
+    a.maxPrice != b.maxPrice ||
     a.sortField != b.sortField ||
     a.sortAscending != b.sortAscending ||
     a.page != b.page ||
@@ -586,6 +684,7 @@ bool _serviceQueryChanged(ServiceQuery a, ServiceQuery b) =>
 bool _clinicQueryChanged(ClinicQuery a, ClinicQuery b) =>
     a.search != b.search ||
     a.city != b.city ||
+    a.hasFreeSlots != b.hasFreeSlots ||
     a.sortField != b.sortField ||
     a.sortAscending != b.sortAscending ||
     a.page != b.page ||
@@ -595,6 +694,17 @@ bool _clinicQueryChanged(ClinicQuery a, ClinicQuery b) =>
 bool _passportQueryChanged(PetPassportQuery a, PetPassportQuery b) =>
     a.search != b.search ||
     a.petId != b.petId ||
+    a.hasMicrochip != b.hasMicrochip ||
+    a.sortField != b.sortField ||
+    a.sortAscending != b.sortAscending ||
+    a.page != b.page ||
+    a.size != b.size ||
+    a.includeDeleted != b.includeDeleted;
+
+bool _groomerQueryChanged(GroomerQuery a, GroomerQuery b) =>
+    a.search != b.search ||
+    a.clinicId != b.clinicId ||
+    a.specialization != b.specialization ||
     a.sortField != b.sortField ||
     a.sortAscending != b.sortAscending ||
     a.page != b.page ||

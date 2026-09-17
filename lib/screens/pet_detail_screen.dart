@@ -93,15 +93,19 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
     if (pet == null || _boarding) return;
     setState(() => _boarding = true);
     try {
+      final start = DateTime.now().add(const Duration(hours: 1));
       await context.read<VisitRepository>().create(
         petId: pet.id,
         clinicId: pet.clinicId,
-        days: 3,
+        start: start,
+        end: start.add(const Duration(hours: 1)),
+        serviceIds: pet.serviceIds,
+        totalPrice: 0,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Питомец заселён в филиал')));
+      ).showSnackBar(const SnackBar(content: Text('Создана запись на груминг')));
       await _load();
     } on ConflictException catch (e) {
       if (!mounted) return;
@@ -248,7 +252,7 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                                 )
                               : const Icon(Icons.hotel),
                           label: Text(
-                            _boarding ? 'Заселение…' : 'Заселить в филиал',
+                            _boarding ? 'Запись…' : 'Записать на груминг',
                           ),
                         ),
                       ],

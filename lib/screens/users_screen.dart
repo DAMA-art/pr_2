@@ -1,9 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../api/app_exceptions.dart';
-import '../api/dio_client.dart';
+import '../api/supabase_errors.dart';
 import '../models/role.dart';
 
 class UsersScreen extends StatefulWidget {
@@ -30,26 +29,27 @@ class _UsersScreenState extends State<UsersScreen> {
       _error = null;
     });
     try {
-      final dio = context.read<Dio>();
-      final res = await dio.get<Map<String, dynamic>>('/users');
-      final content = res.data?['content'];
-      _users = content is List
-          ? content.map((e) => Map<String, dynamic>.from(e as Map)).toList()
-          : [];
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .order('full_name');
+      _users = (data as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } on AppException catch (e) {
+      _error = e.message;
     } catch (e) {
       try {
-        mapDioError(e);
+        mapSupabaseError(e);
       } on AppException catch (ae) {
         _error = ae.message;
       } catch (_) {
-        _error = e.toString();
+        _error = '$e';
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
-
-  String _roleTitle(String? code) => Role.fromCode(code).title;
 
   @override
   Widget build(BuildContext context) {
@@ -63,25 +63,29 @@ class _UsersScreenState extends State<UsersScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text(_error!))
-          : ListView.separated(
-              itemCount: _users.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final u = _users[i];
-                final roleTitle = _roleTitle(u['role'] as String?);
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      (u['username'] as String? ?? '?')[0].toUpperCase(),
+              ? Center(child: Text(_error!))
+              : _users.isEmpty
+                  ? const Center(child: Text('Нет пользователей'))
+                  : ListView.separated(
+                      itemCount: _users.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final u = _users[i];
+                        final email = '${u['email'] ?? ''}';
+                        final name = '${u['full_name'] ?? email}';
+                        final roleTitle = Role.fromCode('${u['role']}').title;
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              (name.isEmpty ? '?' : name[0]).toUpperCase(),
+                            ),
+                          ),
+                          title: Text(name),
+                          subtitle: Text(email),
+                          trailing: Chip(label: Text(roleTitle)),
+                        );
+                      },
                     ),
-                  ),
-                  title: Text(u['fullName'] as String? ?? ''),
-                  subtitle: Text('${u['username']} · ${u['email']}'),
-                  trailing: Chip(label: Text(roleTitle)),
-                );
-              },
-            ),
     );
   }
 }

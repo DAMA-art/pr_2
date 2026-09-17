@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/role.dart';
 import '../models/clinic.dart';
 import '../models/service.dart';
+import '../models/service_query.dart';
 import '../repositories/clinic_repository.dart';
 import '../state/load_status.dart';
 import '../state/auth_notifier.dart';
@@ -23,6 +24,20 @@ class ServiceListScreen extends StatefulWidget {
 
 class _ServiceListScreenState extends State<ServiceListScreen> {
   List<Clinic> _clinics = [];
+
+  void _sync(ServiceQuery q) {
+    final params = <String, String>{};
+    if (q.search.isNotEmpty) params['search'] = q.search;
+    if (q.clinicId != null) params['clinicId'] = '${q.clinicId}';
+    if (q.maxPrice != null) params['maxPrice'] = '${q.maxPrice}';
+    if (q.page != 1) params['page'] = '${q.page}';
+    if (q.size != 10) params['size'] = '${q.size}';
+    if (q.includeDeleted) params['includeDeleted'] = 'true';
+    context.go(
+      Uri(path: '/services', queryParameters: params.isEmpty ? null : params)
+          .toString(),
+    );
+  }
 
   @override
   void initState() {
@@ -73,9 +88,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   SearchField(
                     initialValue: notifier.query.search,
                     hintText: 'Поиск по названию или описанию...',
-                    onChanged: (v) => notifier.applyQuery(
-                      notifier.query.copyWith(search: v, page: 1),
-                    ),
+                    onChanged: (v) {
+                      final next = notifier.query.copyWith(search: v, page: 1);
+                      notifier.applyQuery(next);
+                      _sync(next);
+                    },
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -106,17 +123,47 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                                 ),
                               ),
                           ],
-                          onChanged: (v) => notifier.applyQuery(
-                            notifier.query.copyWith(clinicId: v, page: 1),
+                          onChanged: (v) {
+                            final next =
+                                notifier.query.copyWith(clinicId: v, page: 1);
+                            notifier.applyQuery(next);
+                            _sync(next);
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 180,
+                        child: DropdownButtonFormField<double?>(
+                          isExpanded: true,
+                          initialValue: notifier.query.maxPrice,
+                          decoration: const InputDecoration(
+                            labelText: 'Цена до',
+                            border: OutlineInputBorder(),
+                            isDense: true,
                           ),
+                          items: const [
+                            DropdownMenuItem(value: null, child: Text('Любая')),
+                            DropdownMenuItem(value: 1000, child: Text('1 000 ₽')),
+                            DropdownMenuItem(value: 2500, child: Text('2 500 ₽')),
+                            DropdownMenuItem(value: 5000, child: Text('5 000 ₽')),
+                          ],
+                          onChanged: (v) {
+                            final next =
+                                notifier.query.copyWith(maxPrice: v, page: 1);
+                            notifier.applyQuery(next);
+                            _sync(next);
+                          },
                         ),
                       ),
                       FilterChip(
                         label: const Text('Показать удалённые'),
                         selected: notifier.query.includeDeleted,
-                        onSelected: (v) => notifier.applyQuery(
-                          notifier.query.copyWith(includeDeleted: v, page: 1),
-                        ),
+                        onSelected: (v) {
+                          final next = notifier.query
+                              .copyWith(includeDeleted: v, page: 1);
+                          notifier.applyQuery(next);
+                          _sync(next);
+                        },
                       ),
                     ],
                   ),
@@ -130,11 +177,16 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             PaginationBar(
               result: notifier.result,
               currentSize: notifier.query.size,
-              onPageChanged: (p) =>
-                  notifier.applyQuery(notifier.query.copyWith(page: p)),
-              onSizeChanged: (s) => notifier.applyQuery(
-                notifier.query.copyWith(size: s, page: 1),
-              ),
+              onPageChanged: (p) {
+                final next = notifier.query.copyWith(page: p);
+                notifier.applyQuery(next);
+                _sync(next);
+              },
+              onSizeChanged: (s) {
+                final next = notifier.query.copyWith(size: s, page: 1);
+                notifier.applyQuery(next);
+                _sync(next);
+              },
             ),
         ],
       ),

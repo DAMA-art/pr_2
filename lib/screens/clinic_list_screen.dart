@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/role.dart';
 import '../state/auth_notifier.dart';
 import '../models/clinic.dart';
+import '../models/clinic_query.dart';
 import '../repositories/pet_repository.dart';
 import '../repositories/service_repository.dart';
 import '../state/clinic_list_notifier.dart';
@@ -13,6 +14,18 @@ import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/search_field.dart';
+
+String _clinicUri(ClinicQuery q) {
+  final params = <String, String>{};
+  if (q.search.isNotEmpty) params['search'] = q.search;
+  if (q.city != null) params['city'] = q.city!;
+  if (q.hasFreeSlots == true) params['hasFreeSlots'] = 'true';
+  if (q.page != 1) params['page'] = '${q.page}';
+  if (q.size != 10) params['size'] = '${q.size}';
+  if (q.includeDeleted) params['includeDeleted'] = 'true';
+  return Uri(path: '/clinics', queryParameters: params.isEmpty ? null : params)
+      .toString();
+}
 
 class ClinicListScreen extends StatelessWidget {
   const ClinicListScreen({super.key});
@@ -82,6 +95,18 @@ class ClinicListScreen extends StatelessWidget {
                             notifier.query.copyWith(city: v, page: 1),
                           ),
                         ),
+                      ),
+                      FilterChip(
+                        label: const Text('Есть свободные боксы'),
+                        selected: notifier.query.hasFreeSlots == true,
+                        onSelected: (v) {
+                          final next = notifier.query.copyWith(
+                            hasFreeSlots: v ? true : null,
+                            page: 1,
+                          );
+                          notifier.applyQuery(next);
+                          context.go(_clinicUri(next));
+                        },
                       ),
                       FilterChip(
                         label: const Text('Показать удалённые'),

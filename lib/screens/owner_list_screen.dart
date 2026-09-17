@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/role.dart';
 import '../state/auth_notifier.dart';
 import '../models/owner.dart';
+import '../models/owner_query.dart';
 import '../repositories/pet_repository.dart';
 import '../state/load_status.dart';
 import '../state/owner_list_notifier.dart';
@@ -12,6 +13,20 @@ import '../widgets/confirm_delete.dart';
 import '../widgets/entity_table.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/search_field.dart';
+
+void _syncOwnerUrl(BuildContext context, OwnerQuery q) {
+  final params = <String, String>{};
+  if (q.search.isNotEmpty) params['search'] = q.search;
+  if (q.city != null) params['city'] = q.city!;
+  if (q.country != null) params['country'] = q.country!;
+  if (q.page != 1) params['page'] = '${q.page}';
+  if (q.size != 10) params['size'] = '${q.size}';
+  if (q.includeDeleted) params['includeDeleted'] = 'true';
+  context.go(
+    Uri(path: '/owners', queryParameters: params.isEmpty ? null : params)
+        .toString(),
+  );
+}
 
 class OwnerListScreen extends StatelessWidget {
   const OwnerListScreen({super.key});
@@ -70,12 +85,14 @@ class OwnerListScreen extends StatelessWidget {
                   result: notifier.result,
                   currentSize: notifier.query.size,
                   onPageChanged: (page) {
-                    notifier.applyQuery(notifier.query.copyWith(page: page));
+                    final next = notifier.query.copyWith(page: page);
+                    notifier.applyQuery(next);
+                    _syncOwnerUrl(context, next);
                   },
                   onSizeChanged: (size) {
-                    notifier.applyQuery(
-                      notifier.query.copyWith(size: size, page: 1),
-                    );
+                    final next = notifier.query.copyWith(size: size, page: 1);
+                    notifier.applyQuery(next);
+                    _syncOwnerUrl(context, next);
                   },
                 ),
             ],
@@ -274,7 +291,11 @@ class _FiltersPanel extends StatelessWidget {
             SearchField(
               initialValue: q.search,
               hintText: 'Поиск по фамилии, имени, телефону или стране...',
-              onChanged: (v) => notifier.applyQuery(q.copyWith(search: v)),
+              onChanged: (v) {
+                final next = q.copyWith(search: v);
+                notifier.applyQuery(next);
+                _syncOwnerUrl(context, next);
+              },
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -296,7 +317,11 @@ class _FiltersPanel extends StatelessWidget {
                       for (final city in notifier.cities)
                         DropdownMenuItem(value: city, child: Text(city)),
                     ],
-                    onChanged: (v) => notifier.applyQuery(q.copyWith(city: v)),
+                    onChanged: (v) {
+                      final next = q.copyWith(city: v);
+                      notifier.applyQuery(next);
+                      _syncOwnerUrl(context, next);
+                    },
                   ),
                 ),
                 SizedBox(
@@ -313,15 +338,21 @@ class _FiltersPanel extends StatelessWidget {
                       DropdownMenuItem(value: null, child: Text('Все')),
                       DropdownMenuItem(value: 'Россия', child: Text('Россия')),
                     ],
-                    onChanged: (v) =>
-                        notifier.applyQuery(q.copyWith(country: v)),
+                    onChanged: (v) {
+                      final next = q.copyWith(country: v);
+                      notifier.applyQuery(next);
+                      _syncOwnerUrl(context, next);
+                    },
                   ),
                 ),
                 FilterChip(
                   label: const Text('Показать удалённые'),
                   selected: q.includeDeleted,
-                  onSelected: (v) =>
-                      notifier.applyQuery(q.copyWith(includeDeleted: v)),
+                  onSelected: (v) {
+                    final next = q.copyWith(includeDeleted: v);
+                    notifier.applyQuery(next);
+                    _syncOwnerUrl(context, next);
+                  },
                 ),
               ],
             ),

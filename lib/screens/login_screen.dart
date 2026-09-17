@@ -32,11 +32,17 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await context.read<AuthNotifier>().login(
+      final ok = await context.read<AuthNotifier>().login(
         _username.text.trim(),
         _password.text,
       );
       if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _error = context.read<AuthNotifier>().error ?? 'Не удалось войти';
+        });
+        return;
+      }
       final from = GoRouterState.of(context).uri.queryParameters['from'];
       if (from != null && from.isNotEmpty) {
         context.go(Uri.decodeComponent(from));
@@ -75,7 +81,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'admin / admin123 · vet / vet12345! · client / client12!',
+                      'admin@zoosalon.local / Admin123!\n'
+                      'staff@zoosalon.local / Staff123!\n'
+                      'client@zoosalon.local / Client12!',
                       style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -83,13 +91,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _username,
                       decoration: const InputDecoration(
-                        labelText: 'Логин',
+                        labelText: 'Email',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person),
                       ),
                       textInputAction: TextInputAction.next,
+                      keyboardType: TextInputType.emailAddress,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Введите логин'
+                          ? 'Введите email'
                           : null,
                     ),
                     const SizedBox(height: 16),
