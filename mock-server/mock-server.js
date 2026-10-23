@@ -1,5 +1,85 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
+const client = require('prom-client');
+
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestsTotal = new client.Counter({
+  name: 'zoo_http_requests_total',
+  help: 'Общее количество HTTP-запросов к API Зоосалона',
+  labelNames: ['method', 'path', 'status'],
+  registers: [register],
+});
+
+const httpRequestDuration = new client.Histogram({
+  name: 'zoo_http_request_duration_seconds',
+  help: 'Время обработки HTTP-запросов в секундах',
+  labelNames: ['method', 'path'],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
+
+const petsTotal = new client.Gauge({
+  name: 'zoo_pets_total',
+  help: 'Текущее количество активных (не удалённых) питомцев',
+  registers: [register],
+});
+
+const clinicSlotsAvailable = new client.Gauge({
+  name: 'zoo_clinic_slots_available',
+  help: 'Количество свободных слотов в филиале',
+  labelNames: ['clinic_name'],
+  registers: [register],
+});
+
+const visitsByStatus = new client.Gauge({
+  name: 'zoo_visits_by_status',
+  help: 'Количество визитов по статусам',
+  labelNames: ['status'],
+  registers: [register],
+});
+
+const loginAttempts = new client.Counter({
+  name: 'zoo_login_attempts_total',
+  help: 'Количество попыток авторизации',
+  labelNames: ['result'],
+  registers: [register],
+});
+
+const errorsTotal = new client.Counter({
+  name: 'zoo_errors_total',
+  help: 'Общее количество ошибок приложения',
+  labelNames: ['type'],
+  registers: [register],
+});
+
+function updateBusinessMetrics() {
+  if (!db) return;
+
+  // Количество питомцев
+  petsTotal.set(db.pets.filter((p) => !p.deletedAt).length);
+
+  // Слоты филиалов
+  for (const c of db.clinics.filter((x) => !x.deletedAt)) {
+    clinicSlotsAvailable.set({ clinic_name: c.name }, c.slotsAvailable ?? 0);
+  }
+
+  // Визиты по статусам
+  const statusCounts = { active: 0, overdue: 0, returned: 0 };
+  for (const v of db.visits.filter((x) => !x.deletedAt)) {
+    let status = 'active';
+    if (v.returnedAt) status = 'returned';
+    else if (new Date(v.dueAt) < new Date()) status = 'overdue';
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
+  }
+  for (const [status, count] of Object.entries(statusCounts)) {
+    visitsByStatus.set({ status }, count);
+  }
+}
+
+// Обновляем бизнес-метрики каждые 5 секунд
+setInterval(updateBusinessMetrics, 5000);
 
 const args = process.argv.slice(2);
 function arg(name, fallback) {
@@ -163,7 +243,7 @@ function seed() {
     fullName: 'Администратор', email: 'admin@zoo.local', role: 'admin',
   });
 
-    push('users', {
+  push('users', {
     username: 'vet', passwordHash: hash('vet12345!'),
     fullName: 'Иванова Анна', email: 'vet@zoo.local', role: 'staff',
   });
@@ -515,6 +595,7 @@ function send(res, status, payload) {
 }
 
 function fail(res, status, message) {
+  errorsTotal.inc({ type: 'http_' + status });
   send(res, status, { message });
 }
 
@@ -565,6 +646,7 @@ async function handle(req, res, url) {
 
   if (path === '/api/__reset' && method === 'POST') {
     seed();
+    updateBusinessMetrics();
     return send(res, 200, { message: 'Данные восстановлены в исходное состояние' });
   }
 
@@ -614,8 +696,10 @@ async function handle(req, res, url) {
       (u) => u.username === String(body.username || '').trim() && !u.deletedAt
     );
     if (!found || found.passwordHash !== hash(String(body.password || ''))) {
+      loginAttempts.inc({ result: 'failure' });
       return fail(res, 401, 'Неверный логин или пароль');
     }
+    loginAttempts.inc({ result: 'success' });
     const now = Math.floor(Date.now() / 1000);
     const accessToken = sign({ sub: found.id, role: found.role, type: 'access', exp: now + ACCESS_TTL });
     const refreshToken = sign({ sub: found.id, type: 'refresh', exp: now + REFRESH_TTL });
@@ -737,6 +821,7 @@ async function handle(req, res, url) {
       returnedAt: null,
     });
     clinic.slotsAvailable -= 1;
+    updateBusinessMetrics();
     return send(res, 201, expandVisit(db.visits.find((v) => v.id === id)));
   }
 
@@ -749,6 +834,7 @@ async function handle(req, res, url) {
     visit.returnedAt = new Date().toISOString();
     const clinic = db.clinics.find((c) => c.id === visit.clinicId);
     if (clinic) clinic.slotsAvailable = Math.min(clinic.slotsTotal, clinic.slotsAvailable + 1);
+    updateBusinessMetrics();
     return send(res, 200, expandVisit(visit));
   }
 
@@ -771,6 +857,7 @@ async function handle(req, res, url) {
         deleted += 1;
       }
     }
+    updateBusinessMetrics();
     return send(res, 200, { deleted });
   }
 
@@ -786,6 +873,7 @@ async function handle(req, res, url) {
       const row = db[collection].find((x) => x.id === id);
       if (!row) return fail(res, 404, 'Объект не найден');
       row.deletedAt = null;
+      updateBusinessMetrics();
       return send(res, 200, expand(row));
     }
 
@@ -817,6 +905,7 @@ async function handle(req, res, url) {
       if (collection === 'clinics') {
         row.slotsAvailable = row.slotsTotal;
       }
+      updateBusinessMetrics();
       return send(res, 201, expand(row));
     }
 
@@ -835,6 +924,7 @@ async function handle(req, res, url) {
         const used = prevSlots - (row.slotsAvailable ?? 0);
         row.slotsAvailable = Math.max(0, row.slotsTotal - used);
       }
+      updateBusinessMetrics();
       return send(res, 200, expand(row));
     }
 
@@ -856,6 +946,7 @@ async function handle(req, res, url) {
       } else {
         db[collection][index].deletedAt = new Date().toISOString();
       }
+      updateBusinessMetrics();
       return send(res, 204);
     }
   }
@@ -864,38 +955,58 @@ async function handle(req, res, url) {
 }
 
 seed();
+updateBusinessMetrics();
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+  if (url.pathname === '/metrics') {
+    res.setHeader('Content-Type', register.contentType);
+    res.end(await register.metrics());
+    return;
+  }
+
   if (req.method === 'OPTIONS') {
     cors(res);
     res.writeHead(204);
     return res.end();
   }
+
   const delay = Number(url.searchParams.get('__delay') || 0);
   if (delay > 0) await new Promise((r) => setTimeout(r, Math.min(delay, 10000)));
+
   const started = Date.now();
+  const pathLabel = url.pathname.startsWith('/api/') 
+    ? url.pathname.split('/').slice(0, 4).join('/') 
+    : url.pathname;
+
   try {
     await handle(req, res, url);
   } catch (err) {
     console.error(err);
+    errorsTotal.inc({ type: 'internal' });
     if (!res.headersSent) fail(res, 500, 'Внутренняя ошибка сервера: ' + err.message);
   }
+
+  const duration = (Date.now() - started) / 1000;
+  const status = res.statusCode || 500;
+  httpRequestsTotal.inc({ method: req.method, path: pathLabel, status: String(status) });
+  httpRequestDuration.observe({ method: req.method, path: pathLabel }, duration);
+
   console.log(
-    `${req.method.padEnd(6)} ${url.pathname}${url.search}  → ${res.statusCode}  ${Date.now() - started} мс`
+    `${req.method.padEnd(6)} ${url.pathname}${url.search}  → ${status}  ${Math.round(duration * 1000)} мс`
   );
 });
 
 server.listen(PORT, () => {
   console.log('');
-  console.log('  API «Зоосалон»');
+  console.log('  API «Зоосалон» + Prometheus metrics');
   console.log(`  Адрес:              http://localhost:${PORT}/api`);
+  console.log(`  Метрики:            http://localhost:${PORT}/metrics`);
   console.log(`  Разрешённый источник: ${ORIGIN}`);
   console.log(`  Срок жизни токена:  ${ACCESS_TTL} с`);
   console.log('');
   console.log('  Учётные записи:  admin/admin123, vet/vet12345!, client/client12!');
   console.log('  Сброс данных:    POST /api/__reset');
-  console.log('  Задержка ответа: любой запрос с ?__delay=1500');
-  console.log('  Ошибка по требованию: любой запрос с ?__fail=500');
   console.log('');
 });
